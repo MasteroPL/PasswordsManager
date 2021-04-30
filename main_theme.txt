@@ -1,0 +1,18 @@
+PRIMARY: #263238
+P-Light: #4f5b62
+P-Dark: #000a12
+
+Secondary: #37474f
+S-Light: #62727b
+S-Dark: #102027
+
+Text-P: #ffffff
+Text-P-Light: #ffffff
+Text-P-Dark: #ffffff
+
+Text-S: #ffffff
+Text-S-Light: #ffffff
+Text-S-Dark: #ffffff
+
+Background: #ffffff
+Background-accent: #f5f5f5
