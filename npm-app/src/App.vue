@@ -70,6 +70,7 @@
           <!-- Passwords list -->
           <v-list-item
             link
+            @click="$router.push('/passwords-list/')"
           >
             <v-list-item-icon>
               <v-icon>mdi-lock</v-icon>
