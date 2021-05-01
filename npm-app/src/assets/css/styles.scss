@@ -1,0 +1,92 @@
+@import 'theme-colors';
+@import 'main-template';
+
+html{
+    height: 100%;
+    margin: 0;
+    background-color: var(--app-background);
+}
+
+// .my-app .primary {
+//     background-color: var(--app-primary);
+//     color: var(--app-text-on-primary) !important;
+// }
+// .my-app .primary div {
+//     color: var(--app-text-on-primary) !important;
+// }
+
+// .my-app .primary-light {
+//     background-color: var(--app-primary-light);
+//     color: var(--app-text-on-primary-light) !important;
+// }
+// .my-app .primary-light div {
+//     color: var(--app-text-on-primary-light) !important;
+// }
+
+// .my-app .primary-dark {
+//     background-color: var(--app-primary-dark);
+//     color: var(--app-text-on-primary-dark) !important;
+// }
+// .my-app .primary-dark div {
+//     color: var(--app-text-on-primary-dark) !important;
+// }
+
+// .my-app .secondary {
+//     background-color: var(--app-secondary);
+//     color: var(--app-text-on-secondary);
+// }
+
+// .my-app .secondary div {
+//     color: var(--app-text-on-secondary) !important;
+// }
+
+// .my-app .secondary-light {
+//     background-color: var(--app-secondary-light);
+//     color: var(--app-text-on-secondary-light) !important;
+// }
+// .my-app .secondary-light div {
+//     color: var(--app-text-on-secondary-light) !important;
+// }
+
+// .my-app .secondary-dark {
+//     background-color: var(--app-secondary-dark);
+//     color: var(--app-text-on-secondary-dark) !important;
+// }
+// .my-app .secondary-dark div {
+//     color: var(--app-text-on-secondary-dark) !important;
+// }
+
+// .my-app .background {
+//     background-color: var(--app-background);
+//     color: var(--app-text-on-background) !important;
+// }
+// .my-app .background div {
+//     color: var(--app-text-on-background) !important;
+// }
+
+// .my-app .background-accent {
+//     background-color: var(--app-background-accent);
+//     color: var(--app-text-on-background-accent) !important;
+// }
+// .my-app .background-accent div {
+//     color: var(--app-text-on-background-accent) !important;
+// }
+
+
+// .component-primary {
+//     background-color: var(--app-primary) !important;
+//     color: var(--app-text-on-primary) !important;
+// }
+// .component-primary-light {
+//     background-color: var(--app-primary-light) !important;
+//     color: var(--app-text-on-primary-light) !important;
+// }
+// .component-primary-dark {
+//     background-color: var(--app-primary-dark) !important;
+//     color: var(--app-text-on-primary-dark) !important;
+// }
+
+// .background {
+//     background-color: var(--app-background) !important;
+//     color: var(--app-text-on-background) !important;
+// }
