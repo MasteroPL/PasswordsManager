@@ -116,7 +116,7 @@
             <!-- Information (if provided by server) with what users the password was shared -->
             <v-list-group
               :value="false"
-              prepend-icon="mdi-view-dashboard-variant"
+              prepend-icon="mdi-view-dashboard"
               color=""
             >
               <template v-slot:activator>
