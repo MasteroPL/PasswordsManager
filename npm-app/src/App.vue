@@ -10,6 +10,8 @@
       dark
       v-model="mainNavigation.mobileAppBarModel"
       scroll-target="#scrolling"
+
+      v-if="appDisplay != 'BLANK'"
     >
       <v-app-bar-nav-icon @click="mainNavigation.model = true"></v-app-bar-nav-icon>
 
@@ -23,11 +25,12 @@
       color="primary"
       :permanent="appMode == 'DESKTOP'"
       :temporary="appMode == 'MOBILE'" 
-      absolute 
       class="navigation-side"
       dark
       v-model="mainNavigation.model"
       app
+
+      v-if="appDisplay != 'BLANK'"
     >
       <!-- TOP HEADER -->
       <v-list-item>
@@ -137,6 +140,10 @@
 
 <script>
 
+const DISPLAY_BLANK_URLS = [
+  "/login/"
+];
+
 export default {
   name: 'App',
 
@@ -154,6 +161,11 @@ export default {
     // - MOBILE
     appMode: "DESKTOP",
 
+    // Displays:
+    // - DEFAULT: the regular interface after logging in
+    // - BLANK: interface for pages without authorization
+    appDisplay: "DEFAULT",
+
     boardList: [
       {
         id: 1,
@@ -166,9 +178,11 @@ export default {
     ]
     //
   }),
-  
+  beforeMount(){
+    this.handleRedirect();
+  },
   mounted() {
-    console.log(this.$vuetify.breakpoint.mdOnly);
+    
   },
 
   created() {
@@ -189,9 +203,22 @@ export default {
         htmlElement.setAttribute("theme", "light");
         this.$vuetify.theme.dark = false;
       }
+    },
+    $route(){
+      this.handleRedirect();
     }
   },
   methods: {
+    handleRedirect(){
+      var path = this.$route.path;
+      if(DISPLAY_BLANK_URLS.includes(path)){
+        this.appDisplay = "BLANK";
+        
+      }
+      else{
+        this.appDisplay = "DEFAULT";
+      }
+    },
     handleResize(){
       if(window.innerWidth < 960){
         if(this.appMode == "DESKTOP"){

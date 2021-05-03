@@ -10,6 +10,16 @@ import router from './router'
 Vue.use(Vuetify);
 Vue.use(VueRouter);
 
+//
+// Custom components section
+//
+import ShareDialog from './components/common/dialogs/ShareDialog.vue'
+
+Vue.component('share-dialog', ShareDialog);
+//
+// End of Custom components section
+//
+
 const vuetify = new Vuetify({
   theme: {
     options: { customProperties: true },

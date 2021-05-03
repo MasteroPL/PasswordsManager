@@ -21,6 +21,7 @@
             <v-btn
               icon
               v-if="item.permissionRead || item.permissionOwner"
+              color="secondary"
             >
               <v-icon>mdi-content-copy</v-icon>
             </v-btn>
@@ -29,6 +30,7 @@
             <v-btn
               icon
               v-if="item.permissionShare || item.permissionOwner"
+              color="secondary"
             >
               <v-icon>mdi-share</v-icon>
             </v-btn>
@@ -37,6 +39,7 @@
             <v-btn
               icon
               v-if="item.permissionUpdate || item.permissionUpdate"
+              color="secondary"
             >
               <v-icon>mdi-pencil</v-icon>
             </v-btn>
@@ -44,6 +47,7 @@
             <!-- Delete -->
             <v-btn
               icon
+              color="secondary"
             >
               <v-icon>mdi-delete</v-icon>
             </v-btn>
@@ -54,10 +58,35 @@
           </div>
 
           <v-list class="assignments">
+            <!-- Information about the password owner -->
+            <v-list-group
+              :value="true"
+              prepend-icon="mdi-star"
+              color=""
+            >
+              <template v-slot:activator>
+                <v-list-item-content>
+                  <v-list-item-title>Utworzone przez</v-list-item-title>
+                </v-list-item-content>
+              </template>
+
+              <v-list-item
+                link
+              >
+                <v-list-item-title>{{ item.createdBy.name }}</v-list-item-title>
+
+                <v-icon color="secondary" small>mdi-eye</v-icon>
+                <v-icon color="secondary" small>mdi-share</v-icon>              
+                <v-icon color="secondary" small>mdi-pencil</v-icon>
+                <v-icon color="secondary" small>mdi-star</v-icon>
+              </v-list-item>
+            </v-list-group>
+
             <!-- Information (if provided by server) on which boards the password was shared -->
             <v-list-group
               :value="false"
               prepend-icon="mdi-account-multiple"
+              color=""
             >
               <template v-slot:activator>
                 <v-list-item-content>
@@ -73,22 +102,14 @@
                 <v-list-item-title>{{ user.name }}</v-list-item-title>
 
                 <!-- Icons displays access a person has to passwords -->
-                <v-list-icon>
-                  <v-icon small v-if="user.permissionRead">mdi-eye</v-icon>
-                  <v-icon small v-else>mdi-eye-off</v-icon>
-                </v-list-icon>
-                <v-list-icon>
-                  <v-icon small v-if="user.permissionShare">mdi-share</v-icon>
-                  <v-icon small v-else>mdi-share-off</v-icon>
-                </v-list-icon>
-                <v-list-icon>
-                  <v-icon small v-if="user.permissionUpdate">mdi-pencil</v-icon>
-                  <v-icon small v-else>mdi-pencil-off</v-icon>
-                </v-list-icon>
-                <v-list-icon>
-                  <v-icon small v-if="user.permissiionOwner">mdi-star</v-icon>
-                  <v-icon small v-else>mdi-star-off</v-icon>
-                </v-list-icon>
+                <v-icon color="secondary" small v-if="user.permissionRead">mdi-eye</v-icon>
+                <v-icon small v-else>mdi-eye-off</v-icon>
+                <v-icon color="secondary" small v-if="user.permissionShare">mdi-share</v-icon>
+                <v-icon small v-else>mdi-share-off</v-icon>
+                <v-icon color="secondary" small v-if="user.permissionUpdate">mdi-pencil</v-icon>
+                <v-icon small v-else>mdi-pencil-off</v-icon>
+                <v-icon color="secondary" small v-if="user.permissiionOwner">mdi-star</v-icon>
+                <v-icon small v-else>mdi-star-off</v-icon>
               </v-list-item>
             </v-list-group>
 
@@ -96,6 +117,7 @@
             <v-list-group
               :value="false"
               prepend-icon="mdi-view-dashboard-variant"
+              color=""
             >
               <template v-slot:activator>
                 <v-list-item-content>
@@ -111,22 +133,14 @@
                 <v-list-item-title>{{ board.name }}</v-list-item-title>
 
                 <!-- Icons displays access a board has to passwords -->
-                <v-list-icon>
-                  <v-icon small v-if="board.permissionRead">mdi-eye</v-icon>
-                  <v-icon small v-else>mdi-eye-off</v-icon>
-                </v-list-icon>
-                <v-list-icon>
-                  <v-icon small v-if="board.permissionShare">mdi-share</v-icon>
-                  <v-icon small v-else>mdi-share-off</v-icon>
-                </v-list-icon>
-                <v-list-icon>
-                  <v-icon small v-if="board.permissionUpdate">mdi-pencil</v-icon>
-                  <v-icon small v-else>mdi-pencil-off</v-icon>
-                </v-list-icon>
-                <v-list-icon>
-                  <v-icon small v-if="board.permissiionOwner">mdi-star</v-icon>
-                  <v-icon small v-else>mdi-star-off</v-icon>
-                </v-list-icon>
+                <v-icon color="secondary" small v-if="board.permissionRead">mdi-eye</v-icon>
+                <v-icon small v-else>mdi-eye-off</v-icon>
+                <v-icon color="secondary" small v-if="board.permissionShare">mdi-share</v-icon>
+                <v-icon small v-else>mdi-share-off</v-icon>
+                <v-icon color="secondary" small v-if="board.permissionUpdate">mdi-pencil</v-icon>
+                <v-icon small v-else>mdi-pencil-off</v-icon>
+                <v-icon color="secondary" small v-if="board.permissiionOwner">mdi-star</v-icon>
+                <v-icon small v-else>mdi-star-off</v-icon>
               </v-list-item>
             </v-list-group>
           </v-list>
