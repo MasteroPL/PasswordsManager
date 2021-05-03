@@ -48,7 +48,7 @@ class LoginAPISerializer(serializers.Serializer):
 
         user = authenticate(username=data["login"], password=data["password"])
         if user is None:
-            raise serializers.ValidationError({None: "Invalid username or password"})
+            raise serializers.ValidationError({"__global__": "Invalid username or password"})
 
         self.user = user
 
@@ -65,7 +65,7 @@ class LoginAPI(APIView):
     serializer_class = LoginAPISerializer
 
     def post(self, request, format=None):
-        serializer = LoginAPISerializer(data=request.POST)
+        serializer = LoginAPISerializer(data=request.data)
         if serializer.is_valid():
             try:
                 test_user_can_login(serializer.user)

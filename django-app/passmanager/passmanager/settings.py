@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-wk77n23zlf!1uwe^!plrvy52y%s3290k7^m-lz4!02)yvku+-9
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [ "localhost", "http://localhost:8080", "http://localhost:8080/", "http://localhost:8000", "http://localhost:8000/" ]
 
 
 # Application definition
@@ -37,7 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'rest_framework',
+    'sslserver',
     'main',
 ]
 
@@ -45,6 +47,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -59,6 +62,13 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated'
     ]
 }
+#CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_WHITELIST = [
+    "http://localhost:8000",
+    "http://localhost:8080",
+    "https://localhost:8000",
+    "https://localhost:8080",
+]
 
 ROOT_URLCONF = 'passmanager.urls'
 

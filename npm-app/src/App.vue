@@ -49,11 +49,11 @@
       <!-- ACCOUNT -->
       <v-list-item two-line>
         <v-list-item-avatar color="#FFFFFF" class="navbar-avatar" >
-          JK
+          {{ (userData != null) ? userData.initials : "##" }}
         </v-list-item-avatar>
 
         <v-list-item-content>
-          <v-list-item-title>Jan Kowalski</v-list-item-title>
+          <v-list-item-title>{{ (userData != null && userData.firstName != "") ? userData.firstName + " " : "" }}{{ (userData != null && userData.lastName != "") ? userData.lastName : "" }}</v-list-item-title>
           <v-list-item-subtitle>Zalogowany</v-list-item-subtitle>
         </v-list-item-content>
       </v-list-item>
@@ -73,7 +73,7 @@
           <!-- Passwords list -->
           <v-list-item
             link
-            @click="$router.push('/passwords-list/')"
+            @click="navigateTo('/passwords/')"
           >
             <v-list-item-icon>
               <v-icon>mdi-lock</v-icon>
@@ -115,6 +115,7 @@
           <!-- Log out -->
           <v-list-item
             link
+            @click="logout()"
           >
             <v-list-item-icon>
               <v-icon>mdi-logout</v-icon>
@@ -132,7 +133,9 @@
     <div id="scrolling">
       <v-main class="main">
         <input type="checkbox" v-model="darkMode" />
-        <router-view></router-view>
+        <router-view
+          @authorization-data-received="handleAuthorizationData"
+        ></router-view>
       </v-main>
     </div>
   </v-app>
@@ -140,9 +143,17 @@
 
 <script>
 
-const DISPLAY_BLANK_URLS = [
+const ALLOW_UNAUTHORIZED = [
+  "/",
   "/login/"
 ];
+
+const DISPLAY_BLANK_URLS = [
+  "/",
+  "/login/"
+];
+
+import axios from 'axios'
 
 export default {
   name: 'App',
@@ -175,14 +186,17 @@ export default {
         id: 2,
         name: "Board2",
       }
-    ]
+    ],
+
+    userData: null,
     //
   }),
   beforeMount(){
     this.handleRedirect();
   },
   mounted() {
-    
+    this.loadUserData();
+    this.loadTheme();
   },
 
   created() {
@@ -209,14 +223,49 @@ export default {
     }
   },
   methods: {
+    logout(){
+      var theme = localStorage.getItem('theme');
+      localStorage.clear();
+      if(theme != null){
+        localStorage.setItem('theme', theme);
+      }
+      this.userData = null;
+      this.$router.push("/login/");
+    },
+    navigateTo(url){
+      if(this.$route.path != url)
+        this.$router.push(url);
+    },
     handleRedirect(){
       var path = this.$route.path;
+
+      if(!ALLOW_UNAUTHORIZED.includes(path) && this.userData == null){
+        this.$router.push("/login/");
+      }
+
       if(DISPLAY_BLANK_URLS.includes(path)){
         this.appDisplay = "BLANK";
-        
       }
       else{
         this.appDisplay = "DEFAULT";
+        this.markNavigationPage();
+        this.mainNavigation.model = false;
+      }
+    },
+    markNavigationPage(){
+      var path = this.$route.path;
+      switch(path){
+        case "/passwords/":
+          this.mainNavigation.selected = 0;
+          break;
+        case "/boards/":
+          this.mainNavigation.selected = 1;
+          break;
+        case "/profile/":
+          this.mainNavigation.selected = 2;
+          break;
+        default:
+          this.mainNavigation.selected = null;
       }
     },
     handleResize(){
@@ -230,6 +279,49 @@ export default {
       else{
         this.appMode = "DESKTOP";
         this.mainNavigation.mobileAppBarModel = false;
+      }
+    },
+    handleAuthorizationData(authorizationData){
+      axios.defaults.headers.common['Authorization'] = authorizationData.access;
+      localStorage.setItem('jwt_access', authorizationData.access);
+      localStorage.setItem('jwt_refresh', authorizationData.refresh);
+      localStorage.setItem('user', JSON.stringify(authorizationData.userData));
+
+      this.loadUserData(authorizationData.userData);
+    },
+    loadUserData(data = null){
+      if(data != null){
+        this.userData = data;
+      }
+      else{
+        var stored = localStorage.getItem('user');
+        if(stored != null){
+          this.userData = JSON.parse(stored);
+        }
+      }
+
+      if(this.userData != null){
+        var initials = "";
+        if(this.userData.firstName != ""){
+          initials += this.userData.firstName[0];
+        }
+        if(this.userData.lastName != ""){
+          initials += this.userData.lastName[0];
+        }
+        initials = initials.toUpperCase();
+        this.userData.initials = initials;
+      }
+      else{
+        this.userData = null;
+      }
+    },
+    loadTheme(){
+      var value = localStorage.getItem('theme');
+      if(value != null && value == "dark"){
+        this.darkMode = true;
+      }
+      else{
+        this.darkMode = false;
       }
     }
   }
