@@ -3,12 +3,6 @@ from django.contrib.auth.models import User
 from django.utils.translation import gettext as _
 from django_mysql import models as mysql_models
 
-class UserData(models.Model):
-	user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
-
-	first_name = models.CharField(max_length=30, null=False, blank=False, verbose_name=_("First_name"))
-	last_name = models.CharField(max_length=50, null=False, blank=False, verbose_name=_("Last_name"))
-
 class Password(models.Model):
 	title = models.CharField(max_length=50, null=False, blank=False, verbose_name=_("Title"))
 	description = models.CharField(max_length=500, null=True, blank=True, verbose_name=_("Description"))
@@ -27,6 +21,9 @@ class Password(models.Model):
 			models.Index(fields=["code"], name="code_idx"),
 			models.Index(fields=["title"], name="title_idx")
 		)
+
+	def __str__(self):
+		return "(" + str(self.id) + ") " + self.title
 
 class UserPasswordAssignment(models.Model):
 	user = models.ForeignKey(User, on_delete=models.CASCADE, null=False, blank=False, verbose_name=_("User"))

@@ -31,14 +31,6 @@ class Migration(migrations.Migration):
                 ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='password_updated_by', to=settings.AUTH_USER_MODEL, verbose_name='Updated_by')),
             ],
         ),
-        migrations.CreateModel(
-            name='UserData',
-            fields=[
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, serialize=False, to='auth.user')),
-                ('first_name', models.CharField(max_length=30, verbose_name='First_name')),
-                ('last_name', models.CharField(max_length=50, verbose_name='Last_name')),
-            ],
-        ),
         migrations.RunSQL("""
             ALTER TABLE main_password
             ADD code BINARY(16) NOT NULL,

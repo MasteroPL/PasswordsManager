@@ -4,3 +4,4 @@ pyjwt==2.1.0
 mysqlclient
 djangorestframework==3.12.4
 django-mysql==3.11.1
+djangorestframework-simplejwt==4.6.0
