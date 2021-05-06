@@ -349,6 +349,7 @@ Available props:
           text
           color="primary"
           :disabled="disabled"
+          @click="confirm()"
         >Udostępnij</v-btn>
       </v-card-actions>
     </v-card>
@@ -356,6 +357,8 @@ Available props:
 </template>
 
 <script>
+  import axios from 'axios'
+
   export default {
     name: 'ShareDialog',
 
@@ -490,6 +493,9 @@ Available props:
         user: {
           model: null,
           search: "",
+          searchTimeout: null,
+          currentUpdateId: 0,
+          preventUpdate: false,
           loading: false,
           errors: [],
           items: [
@@ -523,14 +529,56 @@ Available props:
         permissionOwner: true,
       }
     }),
+    watch: {
+      "shareForUser.user.search": function(){
+        if(!this.preventUpdate){
+          if(this.shareForUser.user.searchTimeout != null){
+            clearTimeout(this.shareForUser.user.searchTimeout);
+          }
+          var that = this;
+          this.shareForUser.user.searchTimeout = setTimeout(function(){
+            that.InvokeUpdateUserAutocomplete();
+          }, 500);
+        }
+        else{
+          this.preventUpdate = false;
+        }
+      },
+      "shareForUser.user.model": function(){
+        this.preventUpdate = true;
+      }
+    },
     methods: {
       /**
        * Updates list of choices for User
        * @param search {string} Search string sent to defined API
        */
       APIUpdateUserAutocomplete(search){
-        // TODO
-        return search;
+        var updateId = ++this.shareForUser.user.currentUpdateId;
+        this.shareForUser.user.loading = true;
+
+        var that = this;
+        setTimeout(function(){
+          axios({
+            method: "GET",
+            url: that.userSelectionAPI.url + `?search=${search}`,
+            headers: that.userSelectionAPI.headers
+          }).then((req) => {
+            if(updateId == that.shareForUser.user.currentUpdateId){
+              that.shareForUser.user.loading = false;
+              var response = req.data;
+              that.shareForUser.user.items = [];
+              var tmp;
+              for(var i = 0; i < response.length; i++){
+                tmp = response[i];
+                that.shareForUser.user.items.push({
+                  id: tmp.id,
+                  name: tmp.username + " (" + tmp.email + ")"
+                });
+              }
+            }
+          });
+        }, 1000);
       },
       /**
        * Updates list of choices for Board
@@ -540,7 +588,11 @@ Available props:
         // TODO
         return search;
       },
-      
+      InvokeUpdateUserAutocomplete(){
+        if(this.shareForUser.user.search != null && this.shareForUser.user.search != ""){
+          this.APIUpdateUserAutocomplete(this.shareForUser.user.search);
+        }
+      },
       /**
        * Resets User choice to initial settings based on props
        */
@@ -658,8 +710,18 @@ Available props:
 
       confirm(){
         var data;
+        this.globalError = null;
         // Share for USER
         if(this.tab == 0){
+          if(this.shareForUser.permissionRead == false
+            && this.shareForUser.permissionShare == false
+            && this.shareForUser.permissionUpdate == false
+            && this.shareForUser.permissionOwner == false
+          ){
+            this.globalError = "Wybierz przynajmniej jedno uprawnienie";
+            return;
+          }
+
           data = {
             shareFor: "USER",
             userId: this.shareForUser.user.model,

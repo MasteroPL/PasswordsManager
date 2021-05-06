@@ -12,6 +12,6 @@ admin.site.register(Password, PasswordAdmin)
 
 
 class UserPasswordAssignmentAdmin(admin.ModelAdmin):
-	list_display = ('id', 'user', 'password')
+	list_display = ('id', 'user', 'password', "read", "share", "update", "owner")
 
 admin.site.register(UserPasswordAssignment, UserPasswordAssignmentAdmin)

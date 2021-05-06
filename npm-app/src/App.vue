@@ -134,6 +134,7 @@
       <v-main class="main">
         <input type="checkbox" v-model="darkMode" />
         <router-view
+          :user-data="userData"
           @authorization-data-received="handleAuthorizationData"
         ></router-view>
       </v-main>
@@ -192,10 +193,11 @@ export default {
     //
   }),
   beforeMount(){
+    this.loadAcessToken();
+    this.loadUserData();
     this.handleRedirect();
   },
   mounted() {
-    this.loadUserData();
     this.loadTheme();
   },
 
@@ -230,6 +232,7 @@ export default {
         localStorage.setItem('theme', theme);
       }
       this.userData = null;
+      delete axios.defaults.headers.common["Authorization"];
       this.$router.push("/login/");
     },
     navigateTo(url){
@@ -282,12 +285,23 @@ export default {
       }
     },
     handleAuthorizationData(authorizationData){
-      axios.defaults.headers.common['Authorization'] = authorizationData.access;
-      localStorage.setItem('jwt_access', authorizationData.access);
-      localStorage.setItem('jwt_refresh', authorizationData.refresh);
+      console.log(authorizationData);
+      axios.defaults.headers.common['Authorization'] = "Bearer " + authorizationData.accessToken;
+      localStorage.setItem('jwt_access', authorizationData.accessToken);
+      localStorage.setItem('jwt_refresh', authorizationData.refreshToken);
       localStorage.setItem('user', JSON.stringify(authorizationData.userData));
 
       this.loadUserData(authorizationData.userData);
+    },
+    loadAcessToken(){
+      var token = localStorage.getItem("jwt_access");
+      console.log
+
+      if(token != null){
+        // TODO: validate expiration datetime
+
+        axios.defaults.headers.common["Authorization"] = "Bearer " + token;
+      }      
     },
     loadUserData(data = null){
       if(data != null){
@@ -297,6 +311,7 @@ export default {
         var stored = localStorage.getItem('user');
         if(stored != null){
           this.userData = JSON.parse(stored);
+          console.log(stored);
         }
       }
 

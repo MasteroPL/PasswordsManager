@@ -1,7 +1,7 @@
 <template>
   <v-container class="fill-page" fill-height fluid>
     <v-row align="center" justify="center">
-      <div style="text-align:center; max-width:320px;">
+      <div style="text-align:center; max-width:210px;">
         <h1 class="app-title">PassManager</h1>
         <h3 style="margin-bottom: 20px;">Logowanie</h3>
 
@@ -89,6 +89,7 @@
         }
 
         if(valid){
+          delete axios.defaults.headers.common["Authorization"];
           // Request
           this.mode = "SENDING";
           var that = this;
@@ -144,7 +145,7 @@
               }
             }
             else{
-              this.globalError = "Wystąpił nierozpoznany błąd";
+              this.globalError = "Błąd sieci. Spróbuj ponownie później.";
             }
           }).finally(() => {
             that.mode = "DEFAULT";
