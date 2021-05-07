@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 
 from django.db.models import Q, Value
-from django.http import Http404
+from django.http import Http404, HttpResponseForbidden
 from rest_framework.views import APIView
 from rest_framework import serializers
 from rest_framework.response import Response
@@ -14,9 +14,11 @@ from main.models import Password, UserPasswordAssignment
 from main.api.serializers import (
 	UserPasswordAssignmentSerializer, 
 	UserPasswordsRequestSerializer,
-	SharePasswordForUserAPIGetRequestSerializer
+	SharePasswordForUserAPIGetRequestSerializer,
+	SharePasswordForUserAPIPostRequestSerializer
 )
 from django.db.models.functions import Concat
+from django.core.exceptions import ValidationError
 
 class UserPasswordsList(generics.ListAPIView):
 
@@ -62,7 +64,8 @@ class UserPasswordsList(generics.ListAPIView):
 		ids1 = passwordsOwn.values_list("id", flat=True)
 		ids2 = passwordsAssigned.filter(owner=True).values_list("password_id", flat=True)
 		# Case 2: User originally shared this password
-		ids3 = passwordsAssigned.filter(created_by_id=user.id).values_list("password_id", flat=True)
+		tmp_ids = passwordsAssigned.filter(owner=False).values_list("password_id", flat=True)
+		ids3 = UserPasswordAssignment.objects.filter(password_id__in=tmp_ids, created_by_id=user.id).values_list("id", flat=True)
 
 		# Case 1 query
 		otherAssignments1 = UserPasswordAssignment.objects.filter(
@@ -75,7 +78,7 @@ class UserPasswordsList(generics.ListAPIView):
 		)
 		# Case 2 query
 		otherAssignments2 = UserPasswordAssignment.objects.filter(
-			password_id__in=ids3
+			id__in=ids3
 		)
 
 		# Creating temporary result (for faster mapping), later it will be remapped into a list
@@ -90,15 +93,19 @@ class UserPasswordsList(generics.ListAPIView):
 			result_tmp[password.id]["is_owner"] = True
 
 		for passwordAssignment in passwordsAssigned:
-			result_tmp[passwordsAssignment.password_id] = FullPasswordSerializer(passwordAssignment.password)
-			result_tmp[passwordsAssignment.password_id]["assigned_users"] = []
-			result_tmp[password.id]["read"] = passwordAssignment.read
-			result_tmp[password.id]["share"] = passwordAssignment.share
-			result_tmp[password.id]["update"] = passwordAssignment.update
-			result_tmp[password.id]["is_owner"] = passwordAssignment.owner
+			result_tmp[passwordAssignment.password_id] = FullPasswordSerializer(passwordAssignment.password).data
+			result_tmp[passwordAssignment.password_id]["assigned_users"] = []
+			result_tmp[passwordAssignment.password_id]["read"] = passwordAssignment.read
+			result_tmp[passwordAssignment.password_id]["share"] = passwordAssignment.share
+			result_tmp[passwordAssignment.password_id]["update"] = passwordAssignment.update
+			result_tmp[passwordAssignment.password_id]["is_owner"] = passwordAssignment.owner
 
 		# Mapping other assignments to their passwords
 		for assignment in otherAssignments1:
+			result_tmp[assignment.password.id]["assigned_users"].append(
+				UserPasswordAssignmentSerializer(assignment).data
+			)
+		for assignment in otherAssignments2:
 			result_tmp[assignment.password.id]["assigned_users"].append(
 				UserPasswordAssignmentSerializer(assignment).data
 			)
@@ -162,6 +169,8 @@ class SharePasswordForUserAPI(APIView):
 	def get_serializer_class(self):
 		if self.request.method == "GET":
 			return SharePasswordForUserAPIGetRequestSerializer
+		elif self.request.method == "POST":
+			return SharePasswordForUserAPIPostRequestSerializer
 
 	def get_users_queryset(self, password_id:int, search:str="", limit:int=10):
 		exclude1 = Password.objects.filter(
@@ -193,11 +202,63 @@ class SharePasswordForUserAPI(APIView):
 
 		return users_qs
 
-	def get(self, request, password_id, format=None):
+	def get(self, request, password_id:int, format=None):
 		serializer_cls = self.get_serializer_class()
 		serializer = serializer_cls(data=request.query_params)
 		if serializer.is_valid():
 			users_qs = self.get_users_queryset(password_id, serializer.data["search"], serializer.data["limit"])
 
 			return Response(data=UserSerializer(users_qs, many=True).data, status=status.HTTP_200_OK)
+		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+	
+	def post(self, request, password_id:int, format=None):
+		try:
+			password = Password.objects.get(id=password_id)
+		except Password.DoesNotExist:
+			raise Http404()
+
+		qs = UserPasswordAssignment.objects.filter(password_id=password_id, user_id=request.user.id)
+		if qs.count() != 0:
+			assignment = qs[0]
+
+			if not assignment.share:
+				return HttpResponseForbidden()
+		else:
+			assignment = None
+			if password.owner_id != request.user.id:
+				# This user is not assigned to the password, as far as they're concerned, it doesn't exist
+				raise Http404()
+
+		serializer_cls = self.get_serializer_class()
+		serializer = serializer_cls(data=request.data)
+
+		if serializer.is_valid():
+			# Permission check
+			if password.owner_id != request.user.id:
+				if serializer.data["permission_owner"]:
+					return HttpResponseForbidden()
+				elif serializer.data["permission_update"] or serializer.data["permission_share"]:
+					if not assignment.owner:
+						return HttpResponseForbidden()
+
+			# Assignment creation
+			assignment = UserPasswordAssignment(
+				user_id = serializer.data["user_id"],
+				password_id = password_id,
+
+				read = serializer.data["permission_read"],
+				share = serializer.data["permission_share"],
+				update = serializer.data["permission_update"],
+				owner = serializer.data["permission_owner"],
+				created_by_id = request.user.id,
+				updated_by_id = request.user.id
+			)
+			try:
+				assignment.save()
+			except ValidationError as e:
+				return Response(e.error_dict, status=status.HTTP_400_BAD_REQUEST)
+			
+			return Response(FullUserPasswordAssignmentSerializer(assignment).data, status=status.HTTP_200_OK)
+
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -9,6 +9,8 @@
       :userSelectionUseAPI="true"
       :userSelectionAPI="sharePasswordDialog.userSelectionAPI"
       :userSelectionAPILoadInitial="sharePasswordDialog.userSelectionAPILoadInitial"
+
+      @confirmed="onShareDialogSubmit"
     ></share-dialog>
 
     <v-data-table
@@ -200,6 +202,7 @@
           headers: {},
           data: {}
         },
+        editedItem: null,
         userSelectionAPIUrlTemplate: "https://localhost:8000/api/password/{ID}/share/",
       },
 
@@ -221,72 +224,40 @@
           asc: true
         },
         items: [
-          {
-            permissionRead: true,
-            permissionShare: true,
-            permissionUpdate: true,
-            permissionOwner: true,
-            isMainOwner: true,
-            title: "Hasło XYZ",
-            descriptionShort: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam commodo congue...",
-            descriptionFull: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam commodo congue leo eu ultrices. Aliquam erat volutpat. Pellentesque laoreet mauris non ullamcorper pulvinar. Suspendisse egestas molestie purus tincidunt rhoncus. Fusce est ligula, imperdiet ac velit a, tempor tincidunt lectus. Aenean at augue sagittis, vulputate ante eget, vulputate mi. Pellentesque ligula lorem, ultrices eget rutrum at, dictum bibendum quam. Praesent elementum orci lacus, vel aliquam libero hendrerit eget. Cras ac velit tortor. Phasellus at metus euismod, varius velit ac, tempor arcu. Pellentesque ullamcorper, ligula ut venenatis dignissim, libero ipsum mollis ex, sed viverra nisi metus id lacus. Duis mattis rutrum ex, in cursus ligula elementum vulputate.",
-            sharedOnBoards: [
-              {
-                id: 1,
-                name: "Board A",
-                permissionRead: true,
-                permissionShare: false,
-                permissionUpdate: true,
-                permissionOwner: false
-              },
-              {
-                id: 2,
-                name: "Board B",
-                permissionRead: true,
-                permissionShare: false,
-                permissionUpdate: false,
-                permissionOwner: false
-              },
-              {
-                id: 3,
-                name: "Board C",
-                permissionRead: true,
-                permissionShare: true,
-                permissionUpdate: true,
-                permissionOwner: true
-              }
-            ],
-            sharedWithUsers: [
-              {
-                id: 2,
-                name: "sample_user1",
-                permissionRead: false,
-                permissionShare: true,
-                permissionUpdate: false,
-                permissionOwner: false
-              },
-              {
-                id: 3,
-                name: "sample_user2",
-                permissionRead: true,
-                permissionShare: false,
-                permissionUpdate: false,
-                permissionOwner: false
-              },
-              {
-                id: 4,
-                name: "sample_user3",
-                permissionRead: true,
-                permissionShare: true,
-                permissionUpdate: true,
-                permissionOwner: true
-              }
-            ],
-            ownedBy: {
-              id: 1,
-              name: "admin"
-            }
-          }
+          // {
+          //   permissionRead: true,
+          //   permissionShare: true,
+          //   permissionUpdate: true,
+          //   permissionOwner: true,
+          //   isMainOwner: true,
+          //   title: "Hasło XYZ",
+          //   descriptionShort: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam commodo congue...",
+          //   descriptionFull: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam commodo congue leo eu ultrices. Aliquam erat volutpat. Pellentesque laoreet mauris non ullamcorper pulvinar. Suspendisse egestas molestie purus tincidunt rhoncus. Fusce est ligula, imperdiet ac velit a, tempor tincidunt lectus. Aenean at augue sagittis, vulputate ante eget, vulputate mi. Pellentesque ligula lorem, ultrices eget rutrum at, dictum bibendum quam. Praesent elementum orci lacus, vel aliquam libero hendrerit eget. Cras ac velit tortor. Phasellus at metus euismod, varius velit ac, tempor arcu. Pellentesque ullamcorper, ligula ut venenatis dignissim, libero ipsum mollis ex, sed viverra nisi metus id lacus. Duis mattis rutrum ex, in cursus ligula elementum vulputate.",
+          //   sharedOnBoards: [
+          //     {
+          //       id: 1,
+          //       name: "Board A",
+          //       permissionRead: true,
+          //       permissionShare: false,
+          //       permissionUpdate: true,
+          //       permissionOwner: false
+          //     }
+          //   ],
+          //   sharedWithUsers: [
+          //     {
+          //       id: 2,
+          //       name: "sample_user1",
+          //       permissionRead: false,
+          //       permissionShare: true,
+          //       permissionUpdate: false,
+          //       permissionOwner: false
+          //     }
+          //   ],
+          //   ownedBy: {
+          //     id: 1,
+          //     name: "admin"
+          //   }
+          // }
         ]
       }
     }),
@@ -406,8 +377,30 @@
 
         var url = this.sharePasswordDialog.userSelectionAPIUrlTemplate.replace("{ID}", password.id);
         this.sharePasswordDialog.userSelectionAPI.url = url;
+        this.sharePasswordDialog.editedItem = password;
         
         this.$refs.shareDialog.open();
+      },
+      onShareDialogSubmit(data){
+        if(data.shareFor == "USER"){
+          console.log(data);
+          var that = this;
+          this.$refs.shareDialog.defaultSubmit(data, 
+            this.sharePasswordDialog.userSelectionAPI.url
+          ).then((feedback) => {
+            if(feedback.status == "OK"){
+              that.$refs.shareDialog.close();
+              that.sharePasswordDialog.editedItem.sharedWithUsers.push({
+                id: feedback.user.id,
+                name: feedback.user.username,
+                permissionRead: feedback.permissionRead,
+                permissionShare: feedback.permissionShare,
+                permissionUpdate: feedback.permissionUpdate,
+                permissionOwner: feedback.permissionOwner
+              });
+            }
+          });
+        }
       },
     }
   }

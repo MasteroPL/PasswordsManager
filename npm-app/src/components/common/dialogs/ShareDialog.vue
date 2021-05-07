@@ -558,27 +558,25 @@ Available props:
         this.shareForUser.user.loading = true;
 
         var that = this;
-        setTimeout(function(){
-          axios({
-            method: "GET",
-            url: that.userSelectionAPI.url + `?search=${search}`,
-            headers: that.userSelectionAPI.headers
-          }).then((req) => {
-            if(updateId == that.shareForUser.user.currentUpdateId){
-              that.shareForUser.user.loading = false;
-              var response = req.data;
-              that.shareForUser.user.items = [];
-              var tmp;
-              for(var i = 0; i < response.length; i++){
-                tmp = response[i];
-                that.shareForUser.user.items.push({
-                  id: tmp.id,
-                  name: tmp.username + " (" + tmp.email + ")"
-                });
-              }
+        axios({
+          method: "GET",
+          url: that.userSelectionAPI.url + `?search=${search}`,
+          headers: that.userSelectionAPI.headers
+        }).then((req) => {
+          if(updateId == that.shareForUser.user.currentUpdateId){
+            that.shareForUser.user.loading = false;
+            var response = req.data;
+            that.shareForUser.user.items = [];
+            var tmp;
+            for(var i = 0; i < response.length; i++){
+              tmp = response[i];
+              that.shareForUser.user.items.push({
+                id: tmp.id,
+                name: tmp.username + " (" + tmp.email + ")"
+              });
             }
-          });
-        }, 1000);
+          }
+        });
       },
       /**
        * Updates list of choices for Board
@@ -745,6 +743,84 @@ Available props:
 
         this.$emit("confirmed", data);
       },
+
+      defaultSubmit(data, submitUrl, headers=null){
+        this.startLoading();
+        this.disable();
+
+        if(headers == null){
+          headers = {};
+        }
+
+        var that = this;
+        if(data.shareFor == "USER"){
+          return axios({
+            url: submitUrl,
+            method: "POST",
+            headers: headers,
+            data: {
+              user_id: data.userId,
+              permission_read: data.permissionRead,
+              permission_share: data.permissionShare,
+              permission_update: data.permissionUpdate,
+              permission_owner: data.permissionOwner 
+            }
+          }).then((req) => {
+            that.stopLoading();
+            that.enable();
+            var response = req.data;
+            
+            return {
+              status: "OK",
+              user: {
+                id: response.user.id,
+                username: response.user.username,
+                firstName: response.user.first_name,
+                lastName: response.user.last_name,
+                email: response.user.email
+              },
+              passwordId: response.password.id,
+              permissionRead: response.read,
+              permissionShare: response.share,
+              permissionUpdate: response.update,
+              permissionOwner: response.owner
+            };
+          }).catch((error) => {
+            that.stopLoading();
+            that.enable();
+
+            if(error.response){
+              if(error.response.status == 403 || error.response.status == 401){
+                that.globalError = "Odmowa dostępu";
+              }
+              else if(error.response.status == 400){
+                if(error.response["__all__"] !== undefined && error.response["__all__"][0][0] == "User password assignment with this User and Password already exists."){
+                  that.globalError = "Przypisanie już istnieje. Odśwież stronę.";
+                }
+                else if (error.response["user_id"] !== undefined && error.response["user_id"][0][0] == "User is password owner"){
+                  that.globalError = "Użytkownik jest właścicielem hasła.";
+                }
+              }
+              else if(error.response.status == 404){
+                that.globalError = "Nie znaleziono hasła. Czy nie zostało usunięte?";
+              }
+              else if(error.response.status == 429){
+                that.globalError = "Zapytanie zablokowane. Odczekaj minutę przed następną próbą.";
+              }
+            }
+            else{
+              that.globalError = "Błąd sieci. Spróbuj ponownie później.";
+            }
+
+            return {
+              status: "ERR"
+            };
+          });
+        }
+        else{
+          return null;
+        }
+      }
     }
   }
 </script>

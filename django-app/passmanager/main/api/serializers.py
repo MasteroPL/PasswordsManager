@@ -36,3 +36,29 @@ class SharePasswordForUserAPIGetRequestSerializer(serializers.Serializer):
 			raise serializers.ValidationError({"limit": "Limit has to be within range: <1, 50>"})
 
 		return data
+
+class SharePasswordForUserAPIPostRequestSerializer(serializers.Serializer):
+	user_id = serializers.IntegerField(required=True)
+	permission_read = serializers.BooleanField(required=False, default=False)
+	permission_share = serializers.BooleanField(required=False, default=False)
+	permission_update = serializers.BooleanField(required=False, default=False)
+	permission_owner = serializers.BooleanField(required=False, default=False)
+
+	def validate(self, data):
+		data = super().validate(data)
+
+		user_id = data["user_id"]
+		permission_read = data["permission_read"]
+		permission_share = data["permission_share"]
+		permission_update = data["permission_update"]
+		permission_owner = data["permission_owner"]
+
+		if not permission_read and not permission_share and not permission_update and not permission_owner:
+			raise serializers.ValidationError({"__global__": "No permission selected"})
+
+		if permission_owner:
+			data["permission_read"] = True
+			data["permission_share"] = True
+			data["permission_update"] = True
+
+		return data

@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import gettext as _
 from django_mysql import models as mysql_models
+from django.core.exceptions import ValidationError
 
 class Password(models.Model):
 	title = models.CharField(max_length=50, null=False, blank=False, verbose_name=_("Title"))
@@ -37,6 +38,18 @@ class UserPasswordAssignment(models.Model):
 	created_at = models.DateTimeField(null=False, blank=False, auto_now_add=True, verbose_name=_("Created_at"))
 	updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Updated_by"), related_name="userpasswordassignment_updated_by")
 	updated_at = models.DateTimeField(null=False, blank=False, auto_now=True, verbose_name=_("Updated_at"))
+
+	def clean(self, *args, **kwargs):
+		super().clean(*args, **kwargs)
+
+		if self.password.owner_id == self.user_id:
+			raise ValidationError({
+				'user_id': ValidationError("User is password owner", code="PASSWORD_OWNER_REASSIGNMENT")
+			})
+
+	def save(self, *args, **kwargs):
+		self.full_clean()
+		super().save(*args, **kwargs)
 
 	class Meta:
 		unique_together = ("user", "password")
