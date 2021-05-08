@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 .vscode/
 database/database/persistant_storage/
+django-app/passmanager/protected/passwords/

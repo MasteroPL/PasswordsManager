@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 
 from django.db.models import Q, Value
+from django.db import IntegrityError
 from django.http import Http404, HttpResponseForbidden
 from rest_framework.views import APIView
 from rest_framework import serializers
@@ -15,7 +16,8 @@ from main.api.serializers import (
 	UserPasswordAssignmentSerializer, 
 	UserPasswordsRequestSerializer,
 	SharePasswordForUserAPIGetRequestSerializer,
-	SharePasswordForUserAPIPostRequestSerializer
+	SharePasswordForUserAPIPostRequestSerializer,
+	UserPasswordCreateRequestSerializer
 )
 from django.db.models.functions import Concat
 from django.core.exceptions import ValidationError
@@ -163,6 +165,35 @@ class UserPasswordsList(generics.ListAPIView):
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 		
+class UserPasswordCreate(APIView):
+	def get_serializer_class(self):
+		return UserPasswordCreateRequestSerializer
+
+	def post(self, request, format=None):
+		serializer_cls = self.get_serializer_class()
+		serializer = serializer_cls(data=request.data)
+
+		if serializer.is_valid():
+			try:
+				password = Password.create(
+					serializer.data["password"],
+					serializer.data["title"],
+					serializer.data["description"],
+					owner_id=request.user.id,
+					created_by_id=request.user.id
+				)
+			except ValidationError as e:
+				return Response(e.error_dict, status=status.HTTP_400_BAD_REQUEST)
+			except IntegrityError as e:
+				raise e
+				return Response(data={
+					"__all__": "Could not create the requested password due to an internal server error"
+				}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+			response = FullPasswordSerializer(password).data
+			return Response(response, status=status.HTTP_200_OK)
+
+		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class SharePasswordForUserAPI(APIView):
 

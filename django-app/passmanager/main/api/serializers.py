@@ -37,6 +37,17 @@ class SharePasswordForUserAPIGetRequestSerializer(serializers.Serializer):
 
 		return data
 
+
+class UserPasswordCreateRequestSerializer(serializers.Serializer):
+	password = serializers.CharField(required=True)
+	title = serializers.CharField(required=True)
+	description = serializers.CharField(required=False, default="")
+
+	def validate(self, data):
+		data = super().validate(data)
+		return data
+
+
 class SharePasswordForUserAPIPostRequestSerializer(serializers.Serializer):
 	user_id = serializers.IntegerField(required=True)
 	permission_read = serializers.BooleanField(required=False, default=False)
