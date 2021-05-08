@@ -25,7 +25,7 @@ class FullPasswordSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = Password
-		fields = ["id", "title", "description", "code", "owner", "created_by", "created_at", "updated_by", "updated_at"]
+		fields = [ "title", "description", "code", "owner", "created_by", "created_at", "updated_by", "updated_at"]
 
 
 class FullUserPasswordAssignmentSerializer(serializers.ModelSerializer):
@@ -37,5 +37,5 @@ class FullUserPasswordAssignmentSerializer(serializers.ModelSerializer):
 
 	class Meta:
 		model = UserPasswordAssignment
-		fields = ["user", "password", "read", "share", "update", "owner", "created_by", "created_at", "updated_by", "updated_at"]
+		fields = ["id", "user", "password", "read", "share", "update", "owner", "created_by", "created_at", "updated_by", "updated_at"]
 

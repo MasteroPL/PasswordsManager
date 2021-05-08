@@ -203,7 +203,7 @@
           data: {}
         },
         editedItem: null,
-        userSelectionAPIUrlTemplate: "https://localhost:8000/api/password/{ID}/share/",
+        userSelectionAPIUrlTemplate: "https://localhost:8000/api/password/{ID}/share/user/",
       },
 
       dataTable: {
@@ -292,7 +292,7 @@
         for(var i = 0; i < items.length; i++){
           item = items[i];
           tmp = {
-            id: item.id,
+            id: item.code,
             permissionRead: item.read,
             permissionShare: item.share,
             permissionUpdate: item.update,

@@ -172,12 +172,12 @@ class SharePasswordForUserAPI(APIView):
 		elif self.request.method == "POST":
 			return SharePasswordForUserAPIPostRequestSerializer
 
-	def get_users_queryset(self, password_id:int, search:str="", limit:int=10):
+	def get_users_queryset(self, password_code:str, search:str="", limit:int=10):
 		exclude1 = Password.objects.filter(
-			id=password_id
+			code=password_code
 		).values_list("owner_id", flat=True)
 		exclude2 = UserPasswordAssignment.objects.filter(
-			password_id=password_id
+			password__code=password_code
 		).values_list("user_id", flat=True)
 
 		if search is not None and search != "":
@@ -202,23 +202,37 @@ class SharePasswordForUserAPI(APIView):
 
 		return users_qs
 
-	def get(self, request, password_id:int, format=None):
+	def get(self, request, password_code:str, format=None):
+		try:
+			password = Password.objects.get(code=password_code)
+		except Password.DoesNotExist:
+			raise Http404()
+
+		if password.owner_id != request.user.id:
+			try:
+				assignment = UserPasswordAssignment.objects.get(password__code=password_code, user_id=request.user.id)
+			except UserPasswordAssignment.DoesNotExist:
+				raise Http404()
+
+			if not assignment.share:
+				return HttpResponseForbidden()
+
 		serializer_cls = self.get_serializer_class()
 		serializer = serializer_cls(data=request.query_params)
 		if serializer.is_valid():
-			users_qs = self.get_users_queryset(password_id, serializer.data["search"], serializer.data["limit"])
+			users_qs = self.get_users_queryset(password_code, serializer.data["search"], serializer.data["limit"])
 
 			return Response(data=UserSerializer(users_qs, many=True).data, status=status.HTTP_200_OK)
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 	
-	def post(self, request, password_id:int, format=None):
+	def post(self, request, password_code:str, format=None):
 		try:
-			password = Password.objects.get(id=password_id)
+			password = Password.objects.get(code=password_code)
 		except Password.DoesNotExist:
 			raise Http404()
 
-		qs = UserPasswordAssignment.objects.filter(password_id=password_id, user_id=request.user.id)
+		qs = UserPasswordAssignment.objects.filter(password__code=password_code, user_id=request.user.id)
 		if qs.count() != 0:
 			assignment = qs[0]
 
@@ -245,7 +259,7 @@ class SharePasswordForUserAPI(APIView):
 			# Assignment creation
 			assignment = UserPasswordAssignment(
 				user_id = serializer.data["user_id"],
-				password_id = password_id,
+				password_id = password.id,
 
 				read = serializer.data["permission_read"],
 				share = serializer.data["permission_share"],
