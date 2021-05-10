@@ -14,8 +14,10 @@ Vue.use(VueRouter);
 // Custom components section
 //
 import ShareDialog from './components/common/dialogs/ShareDialog.vue'
+import NewPasswordDialog from './components/common/dialogs/NewPasswordDialog.vue'
 
 Vue.component('share-dialog', ShareDialog);
+Vue.component('new-password-dialog', NewPasswordDialog);
 
 // Credits to LinusBorg: https://forum.vuejs.org/t/conditionally-render-parent-element/9324
 Vue.component('with-root', {

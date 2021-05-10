@@ -1,5 +1,20 @@
 <template>
   <v-container>
+    <new-password-dialog
+      ref="newPasswordDialog"
+      @confirmed="onNewPasswordDialogSubmit"
+    ></new-password-dialog>
+
+    <v-btn
+      color="secondary"
+      fab
+      dark
+      style="position:fixed; bottom:40px; right: 40px;"
+      @click="openNewPasswordDialog()"
+    >
+      <v-icon>mdi-plus</v-icon>
+    </v-btn>
+
     <share-dialog
       ref="shareDialog"
       :allowPermissionRead="sharePasswordDialog.allowPermissionRead"
@@ -352,7 +367,6 @@
       },
 
       openShareDialog(password){
-        console.log(password);
         if(password.isMainOwner){
           this.sharePasswordDialog.allowPermissionRead = true;
           this.sharePasswordDialog.allowPermissionShare = true;
@@ -402,6 +416,20 @@
           });
         }
       },
+      openNewPasswordDialog(){
+        this.$refs.newPasswordDialog.open();
+      },
+      onNewPasswordDialogSubmit(data){
+        var that = this;
+        this.$refs.newPasswordDialog.defaultSubmit(
+          data
+        ).then((feedback) => {
+          if(feedback.status == "OK"){
+            that.$refs.newPasswordDialog.close();
+            that.updateTable();
+          }
+        });
+      }
     }
   }
 </script>

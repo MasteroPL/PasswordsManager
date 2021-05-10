@@ -1,9 +1,8 @@
 <template>
   <v-container>
-    <share-dialog
-      ref="shareDialog"
-      :userSelectionItems="userItems"
-    ></share-dialog>
+    <new-password-dialog
+      ref="newPasswordDialog"
+    ></new-password-dialog>
   </v-container>
 </template>
 
@@ -32,21 +31,10 @@
       ]
     }),
     mounted() {
-      this.$refs.shareDialog.open();
-
       var that = this;
       setTimeout(function(){
-        that.$refs.shareDialog.disable();
-        that.$refs.shareDialog.startLoading();
+        that.$refs.newPasswordDialog.open();
       }, 1000);
-      setTimeout(function(){
-        that.$refs.shareDialog.enable();
-        that.$refs.shareDialog.stopLoading();
-        that.$refs.shareDialog.shareForUser.user.errors = ["Użytkownik nie istnieje"];
-      }, 2000);
-      setTimeout(function(){
-        that.$refs.shareDialog.shareForUser.user.errors = [];
-      }, 3000);
     }
   }
 </script>
