@@ -22,7 +22,11 @@ from main.api.serializers import (
 from django.db.models.functions import Concat
 from django.core.exceptions import ValidationError
 
-class UserPasswordsList(generics.ListAPIView):
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
+from django.conf import settings
+
+class UserPasswordsListAPI(generics.ListAPIView):
 
 	serializer_class = UserPasswordsRequestSerializer
 
@@ -114,7 +118,7 @@ class UserPasswordsList(generics.ListAPIView):
 
 		# Finally mapping entire dictionary to an array
 		result = list(result_tmp.values())
-		result.sort(key=UserPasswordsList.arr_key, reverse=(not asc))
+		result.sort(key=UserPasswordsListAPI.arr_key, reverse=(not asc))
 		return result
 
 	def paginate(self, queryset, page=1, per_page=10):
@@ -164,8 +168,7 @@ class UserPasswordsList(generics.ListAPIView):
 
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-		
-class UserPasswordCreate(APIView):
+class UserPasswordCreateAPI(APIView):
 	def get_serializer_class(self):
 		return UserPasswordCreateRequestSerializer
 
@@ -194,6 +197,39 @@ class UserPasswordCreate(APIView):
 			return Response(response, status=status.HTTP_200_OK)
 
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserPasswordDecryptAPI(APIView):
+	
+	def post(self, request, password_code:str, format=None):
+		'''
+		Used to obtain a decrypted password via password_code
+		'''
+
+		try:
+			password = Password.objects.get(code=password_code)
+		except Password.DoesNotExist:
+			raise Http404()
+
+		has_permission, is_assigned = password.user_has_access(request.user.id)
+		if not has_permission:
+			if not is_assigned:
+				raise Http404()
+
+			return Response(status=status.HTTP_403_FORBIDDEN)
+
+		try:
+			pass_value = password.read()
+		except Password.IntegrityError:
+			return Response(data={
+				"error_code": "PASSWORD_INTEGRITY_ERROR",
+				"error_message": "The password has not been properly stored server side. Please contact the administrator for more infromation."
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+		return Response(data={
+			"password": pass_value
+		}, status=status.HTTP_200_OK)
+
+
 
 class SharePasswordForUserAPI(APIView):
 

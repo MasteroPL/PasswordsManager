@@ -64,6 +64,8 @@
                   icon
                   v-if="item.permissionRead || item.permissionOwner"
                   color="secondary"
+                  :loading="item.copyButtonLoading"
+                  @click="copyPassword(item)"
                 >
                   <v-icon>mdi-content-copy</v-icon>
                 </v-btn>
@@ -200,12 +202,13 @@
 <script>
   import appConfig from "../config"
   import axios from "axios"
+  import copyToClipboard from "copy-to-clipboard"
 
   export default {
     name: 'PasswordsList',
 
     data: () => ({
-
+      rsaTransferKey: null,
       sharePasswordDialog: {
         allowPermissionRead: true,
         allowPermissionShare: true,
@@ -240,6 +243,9 @@
         },
         items: [
           // {
+          //   copyButtonLoading: false,    
+          //
+          //
           //   permissionRead: true,
           //   permissionShare: true,
           //   permissionUpdate: true,
@@ -307,6 +313,8 @@
         for(var i = 0; i < items.length; i++){
           item = items[i];
           tmp = {
+            copyButtonLoading: false,
+
             id: item.code,
             permissionRead: item.read,
             permissionShare: item.share,
@@ -429,6 +437,23 @@
             that.updateTable();
           }
         });
+      },
+      copyPassword(item){
+        if(!item.copyButtonLoading){
+          item.copyButtonLoading = true;
+          var url = appConfig.apiUrl + `api/password/${item.id}/obtain/`;
+          axios({
+            method: "POST",
+            url: url
+          }).then((req) => {
+            var response = req.data;
+            var password = response.password;
+            copyToClipboard(password);
+
+          }).finally(() => {
+            item.copyButtonLoading = false;
+          });
+        }
       }
     }
   }

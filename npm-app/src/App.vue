@@ -134,7 +134,7 @@
       <v-main class="main">
         <input type="checkbox" v-model="darkMode" />
         <router-view
-          :user-data="userData"
+          :userData="userData"
           @authorization-data-received="handleAuthorizationData"
         ></router-view>
       </v-main>
@@ -161,6 +161,7 @@ export default {
 
   data: () => ({
     darkMode: false,
+    rsaTransferPublicKey: null,
     mainNavigation: {
       mobileAppBarModel: false,
       model: false,

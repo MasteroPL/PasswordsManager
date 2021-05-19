@@ -1,5 +1,5 @@
 from django.db import models, transaction, IntegrityError
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission, User
 from django.utils.translation import gettext as _
 from django_mysql import models as mysql_models
 from django.core.exceptions import ValidationError
@@ -79,12 +79,105 @@ class Password(models.Model):
 		
 		return instance
 
+	@staticmethod
+	def _read(password):
+		with open(os.path.join(Password.TARGET_DIRECTORY, password.code), "rb") as f:
+			ciphertext = f.read()
+
+		tag_nonce_salt = password.signature
+		tag = tag_nonce_salt[0:16]
+		nonce = tag_nonce_salt[16:32]
+		salt = tag_nonce_salt[32:40]
+
+		full_key = settings.MAIN_APP.PASSWORDS_HS256_MAIN_KEY + salt
+		cipher = AES.new(full_key, AES.MODE_EAX, nonce=nonce)
 		
+		try:
+			plaintext = cipher.decrypt_and_verify(ciphertext, tag)
+		except ValueError:
+			raise Password.IntegrityError("Password file and DB entry mismatch")
+
+		try:
+			pass_value = plaintext.decode("utf-8")
+		except Exception:
+			raise Password.IntegrityError("Invalid encoding for password file (despite successful decryption)")
+
+		return pass_value
+
+	def read(self):
+		return Password._read(self)
+
+	@staticmethod
+	def read_by_code(pass_code:str):
+		password = Password.objects.get(code=pass_code)
+		return Password._read(password)
+
+	@staticmethod
+	def read_by_id(pass_id:int):
+		password = Password.objects.get(id=pass_id)
+		return Password._read(password)
+
+	@staticmethod
+	def user_has_access_to_password(user_id:int, password, read=True, share=False, update=False, owner=False):
+		'''
+		Determines whether specified user has specified access to given password
+
+		Access validation is only matched againast permission arguments specfied as "True", meaning for arguments:
+		- read=True
+		- share=True
+		- update=False
+		- owner=False
+
+		The access will be verified for permissions read and share
+
+		:returns: Returns 2 bools. First determines whether user has access to the password, second whether the user is at least assigned to the password
+		'''
+		if password.owner_id == user_id:
+			return True, True
+
+		assignment = UserPasswordAssignment.objects.filter(password_id=password.id, user_id=user_id)
+		if assignment.count() == 0:
+			return False, False
+		
+		assignment = assignment[0]
+		if read and not assignment.read and not assignment.owner:
+			return False, True
+		if share and not assignment.share and not assignment.owner:
+			return False, True
+		if update and not assignment.update and not assignment.owner:
+			return False, True
+		if owner and not assignment.owner:
+			return False, True
+
+		return True, True
+
+	def user_has_access(self, user_id:int, read=True, share=False, update=False, owner=False):
+		'''
+		Determines whether specified user has specified access to this password
+
+		Access validation is only matched againast permission arguments specfied as "True", meaning for arguments:
+		- read=True
+		- share=True
+		- update=False
+		- owner=False
+
+		The access will be verified for permissions read and share
+
+		:returns: Returns 2 bools. First determines whether user has access to the password, second whether the user is at least assigned to the password
+		'''
+		return Password.user_has_access_to_password(user_id, self, read=read, share=share, update=update, owner=owner)
 
 	class Meta:
 		indexes = (
 			models.Index(fields=["title"], name="title_idx"),
 		)
+
+	class IntegrityError(Exception):
+		'''
+		Data in the database matched with data stored in files might mismatch
+		In this case, the IntegrityError is raised
+		'''
+		pass
 
 	def __str__(self):
 		return "(" + str(self.id) + ") " + self.title
