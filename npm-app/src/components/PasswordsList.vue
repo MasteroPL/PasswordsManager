@@ -60,15 +60,26 @@
             <td :colspan="headers.length" class="passwords-list-item-details">
               <div class="actions" style="text-align:right; padding-bottom: 15px;">
                 <!-- Copy to clipboard -->
-                <v-btn
-                  icon
-                  v-if="item.permissionRead || item.permissionOwner"
-                  color="secondary"
-                  :loading="item.copyButtonLoading"
-                  @click="copyPassword(item)"
+                <v-tooltip
+                  bottom
                 >
-                  <v-icon>mdi-content-copy</v-icon>
-                </v-btn>
+                  <template v-slot:activator="{ on, attrs }">
+                    <v-btn
+                      icon
+                      v-if="item.permissionRead || item.permissionOwner"
+                      color="secondary"
+                      :loading="item.copyButtonLoading"
+                      @click="copyPassword(item)"
+                      v-bind="attrs"
+                      v-on="on"
+                    >
+                      <v-icon v-if="!item.copyButtonCopiedState">mdi-content-copy</v-icon>
+                      <v-icon v-else>mdi-check</v-icon>
+                    </v-btn>
+                  </template>
+                  <span v-if="!item.copyButtonCopiedState">Skopiuj hasło do schowka</span>
+                  <span v-else>Hasło skopiowane do schowka</span>
+                </v-tooltip>
 
                 <!-- Share -->
                 <v-btn
@@ -107,7 +118,7 @@
                 <v-list-group
                   :value="true"
                   prepend-icon="mdi-star"
-                  color=""
+                  color="secondary"
                 >
                   <template v-slot:activator>
                     <v-list-item-content>
@@ -131,7 +142,7 @@
                 <v-list-group
                   :value="false"
                   prepend-icon="mdi-account-multiple"
-                  color=""
+                  color="secondary"
                   v-if="item.sharedWithUsers.length > 0"
                 >
                   <template v-slot:activator>
@@ -163,7 +174,7 @@
                 <v-list-group
                   :value="false"
                   prepend-icon="mdi-view-dashboard"
-                  color=""
+                  color="secondary"
                   v-if="item.sharedOnBoards.length > 0"
                 >
                   <template v-slot:activator>
@@ -245,6 +256,8 @@
           // {
           //   copyButtonLoading: false,    
           //
+          //   // Display check mark instead of copy icon
+          //   copyButtonCopiedState: false,
           //
           //   permissionRead: true,
           //   permissionShare: true,
@@ -314,6 +327,8 @@
           item = items[i];
           tmp = {
             copyButtonLoading: false,
+            // Display check mark instead of copy icon
+            copyButtonCopiedState: false,
 
             id: item.code,
             permissionRead: item.read,
@@ -439,7 +454,7 @@
         });
       },
       copyPassword(item){
-        if(!item.copyButtonLoading){
+        if(!item.copyButtonLoading && !item.copyButtonCopiedState){
           item.copyButtonLoading = true;
           var url = appConfig.apiUrl + `api/password/${item.id}/obtain/`;
           axios({
@@ -449,7 +464,11 @@
             var response = req.data;
             var password = response.password;
             copyToClipboard(password);
-
+            
+            item.copyButtonCopiedState = true;
+            setTimeout(function(){
+              item.copyButtonCopiedState = false;
+            }, 1000);
           }).finally(() => {
             item.copyButtonLoading = false;
           });

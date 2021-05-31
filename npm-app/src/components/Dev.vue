@@ -1,8 +1,8 @@
 <template>
   <v-container>
-    <new-password-dialog
-      ref="newPasswordDialog"
-    ></new-password-dialog>
+    <delete-password-dialog
+      ref="deletePasswordDialog"
+    ></delete-password-dialog>
   </v-container>
 </template>
 
@@ -33,7 +33,12 @@
     mounted() {
       var that = this;
       setTimeout(function(){
-        that.$refs.newPasswordDialog.open();
+        that.$refs.deletePasswordDialog.open();
+
+        setTimeout(function(){
+          that.$refs.deletePasswordDialog.disable();
+          that.$refs.deletePasswordDialog.startLoading();
+        }, 1000);
       }, 1000);
     }
   }

@@ -76,7 +76,7 @@
   const DEFAULT_SUBMIT_URL = "api/password/new/";
 
   export default {
-    name: 'Dev',
+    name: 'NewPasswordDialog',
 
     data: () => ({
       dialog: false,

@@ -131,7 +131,7 @@ Available props:
                         >mdi-help-circle-outline</v-icon>
                       </template>
 
-                      <span>Użytkownik będziem mógł odczytać to hasło</span>
+                      <span>Użytkownik będzie mógł odczytać to hasło</span>
                     </v-tooltip>
                   </div>
                 </template>

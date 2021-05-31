@@ -15,9 +15,15 @@ Vue.use(VueRouter);
 //
 import ShareDialog from './components/common/dialogs/ShareDialog.vue'
 import NewPasswordDialog from './components/common/dialogs/NewPasswordDialog.vue'
+import EditShareDialog from './components/common/dialogs/EditShareDialog.vue'
+import EditPasswordDialog from './components/common/dialogs/EditPasswordDialog'
+import DeletePasswordDialog from './components/common/dialogs/DeletePasswordDialog.vue'
 
 Vue.component('share-dialog', ShareDialog);
 Vue.component('new-password-dialog', NewPasswordDialog);
+Vue.component('edit-share-dialog', EditShareDialog);
+Vue.component('edit-password-dialog', EditPasswordDialog);
+Vue.component('delete-password-dialog', DeletePasswordDialog);
 
 // Credits to LinusBorg: https://forum.vuejs.org/t/conditionally-render-parent-element/9324
 Vue.component('with-root', {
