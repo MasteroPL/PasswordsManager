@@ -1,8 +1,8 @@
 <template>
   <v-container>
-    <delete-password-dialog
+    <change-password-owner-dialog
       ref="deletePasswordDialog"
-    ></delete-password-dialog>
+    ></change-password-owner-dialog>
   </v-container>
 </template>
 
@@ -31,15 +31,15 @@
       ]
     }),
     mounted() {
-      var that = this;
-      setTimeout(function(){
-        that.$refs.deletePasswordDialog.open();
+      // var that = this;
+      // setTimeout(function(){
+      //   that.$refs.deletePasswordDialog.open();
 
-        setTimeout(function(){
-          that.$refs.deletePasswordDialog.disable();
-          that.$refs.deletePasswordDialog.startLoading();
-        }, 1000);
-      }, 1000);
+      //   setTimeout(function(){
+      //     that.$refs.deletePasswordDialog.disable();
+      //     that.$refs.deletePasswordDialog.startLoading();
+      //   }, 1000);
+      // }, 1000);
     }
   }
 </script>

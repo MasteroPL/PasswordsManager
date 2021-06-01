@@ -28,6 +28,36 @@
       @confirmed="onShareDialogSubmit"
     ></share-dialog>
 
+    <edit-share-dialog
+      ref="editShareDialog"
+      :usernameSlot="editShareDialog.usernameSlot"
+      :allowPermissionRead="editShareDialog.allowPermissionRead"
+      :allowPermissionShare="editShareDialog.allowPermissionShare"
+      :allowPermissionUpdate="editShareDialog.allowPermissionUpdate"
+      :allowPermissionOwner="editShareDialog.allowPermissionOwner"
+      :defaultPermissionRead="editShareDialog.defaultPermissionRead"
+      :defaultPermissionShare="editShareDialog.defaultPermissionShare"
+      :defaultPermissionUpdate="editShareDialog.defaultPermissionUpdate"
+      :defaultPermissionOwner="editShareDialog.defaultPermissionOwner"
+    ></edit-share-dialog>
+
+    <change-password-owner-dialog
+      ref="changePasswordOwnerDialog"
+      :userSelectionUseAPI="true"
+      :userSelectionAPI="changePasswordOwnerDialog.userSelectionAPI"
+      :userSelectionAPILoadInitial="changePasswordOwnerDialog.userSelectionAPILoadInitial"
+    ></change-password-owner-dialog>
+
+    <!-- Dialog for completely removing a password from server memory -->
+    <delete-password-dialog
+      ref="deletePasswordDialog"
+    ></delete-password-dialog>
+
+    <!-- Dialog for removing a password from user account (other users will still see it) -->
+    <remove-my-password-assignment-dialog
+      ref="removeMyPasswordAssignmentDialog"
+    ></remove-my-password-assignment-dialog>
+
     <v-data-table
       :headers="dataTable.headers"
       :items="dataTable.items"
@@ -100,10 +130,30 @@
                   <v-icon>mdi-pencil</v-icon>
                 </v-btn>
 
+                <!-- Change owner -->
+                <v-btn
+                  icon
+                  color="secondary"
+                  v-if="item.isMyPassword"
+                  @click="openChangePasswordOwnerDialog(item)"
+                >
+                  <v-icon>mdi-star</v-icon>
+                </v-btn>
+
                 <!-- Delete -->
                 <v-btn
                   icon
                   color="secondary"
+                  v-if="item.isMyPassword"
+                  @click="openDeletePasswordDialog(item)"
+                >
+                  <v-icon>mdi-delete</v-icon>
+                </v-btn>
+                <v-btn
+                  icon
+                  color="secondary"
+                  v-else
+                  @click="openRemoveMyPasswordAssignmentDialog(item)"
                 >
                   <v-icon>mdi-delete</v-icon>
                 </v-btn>
@@ -155,6 +205,7 @@
                     v-for="(user) in item.sharedWithUsers"
                     :key="user.id" 
                     link
+                    @click="openEditShareDialog(item, user)"
                   >
                     <v-list-item-title>{{ user.name }}</v-list-item-title>
 
@@ -197,7 +248,7 @@
                     <v-icon small v-else>mdi-share-off</v-icon>
                     <v-icon color="secondary" small v-if="board.permissionUpdate">mdi-pencil</v-icon>
                     <v-icon small v-else>mdi-pencil-off</v-icon>
-                    <v-icon color="secondary" small v-if="board.permissiionOwner">mdi-star</v-icon>
+                    <v-icon color="secondary" small v-if="board.permissionOwner">mdi-star</v-icon>
                     <v-icon small v-else>mdi-star-off</v-icon>
                   </v-list-item>
                 </v-list-group>
@@ -233,6 +284,37 @@
         },
         editedItem: null,
         userSelectionAPIUrlTemplate: "https://localhost:8000/api/password/{ID}/share/user/",
+      },
+
+      editShareDialog: {
+        usernameSlot: null,
+
+        allowPermissionRead: true,
+        allowPermissionShare: true,
+        allowPermissionUpdate: true,
+        allowPermissionOwner: true,
+        defaultPermissionRead: false,
+        defaultPermissionShare: false,
+        defaultPermissionUpdate: false,
+        defaultPermissionOwner: false
+      },
+
+      changePasswordOwnerDialog: {
+        editedItem: null,
+        userSelectionAPILoadInitial: false,
+        userSelectionAPI: {
+          url: null,
+          headers: {},
+          data: {}
+        },
+        userSelectionAPIUrlTemplate: "https://localhost:8000/api/password/{ID}/change-ownership/"
+      },
+
+      deletePasswordDialog: {
+        editedId: null
+      },
+      removeMyPasswordAssignmentDialog: {
+        editedId: null
       },
 
       dataTable: {
@@ -340,6 +422,7 @@
             descriptionShort: (item.description.length > 100) ? item.description.substring(0, 97) + "..." : item.description,
             descriptionFull: item.description,
             code: item.code,
+            isMyPassword: item.owner.id == this.userData.id,
             ownedBy: {
               id: item.owner.id,
               name: item.owner.username
@@ -356,7 +439,9 @@
               permissionRead: assignment.read,
               permissionShare: assignment.share,
               permissionUpdate: assignment.update,
-              permissionOwner: assignment.owner
+              permissionOwner: assignment.owner,
+
+              editable: true
             });
           }
 
@@ -473,7 +558,60 @@
             item.copyButtonLoading = false;
           });
         }
-      }
+      },
+
+      openEditShareDialog(item, share){
+        // Defining what is visible to editing user
+        if(item.isMyPassword){
+          this.editShareDialog.allowPermissionRead = true;
+          this.editShareDialog.allowPermissionShare = true;
+          this.editShareDialog.allowPermissionUpdate = true;
+          this.editShareDialog.allowPermissionOwner = true;
+        }
+        else if(item.permissionOwner){
+          this.editShareDialog.allowPermissionRead = true;
+          this.editShareDialog.allowPermissionShare = true;
+          this.editShareDialog.allowPermissionUpdate = true;
+          this.editShareDialog.allowPermissionOwner = false;
+        }
+        else{
+          this.editShareDialog.allowPermissionRead = true;
+          this.editShareDialog.allowPermissionShare = false;
+          this.editShareDialog.allowPermissionUpdate = false;
+          this.editShareDialog.allowPermissionOwner = false;
+        }
+
+        // Defining defaults
+        this.editShareDialog.defaultPermissionRead = share.permissionRead;
+        this.editShareDialog.defaultPermissionShare = share.permissionShare;
+        this.editShareDialog.defaultPermissionUpdate = share.permissionUpdate;
+        this.editShareDialog.defaultPermissionOwner = share.permissionOwner;
+
+        this.editShareDialog.usernameSlot = share.name;
+
+        var that = this;
+        this.$nextTick(function() {
+          that.$refs.editShareDialog.open();
+        });
+      },
+
+      openChangePasswordOwnerDialog(item){
+        var url = this.changePasswordOwnerDialog.userSelectionAPIUrlTemplate.replace("{ID}", item.id);
+        this.changePasswordOwnerDialog.userSelectionAPI.url = url;
+        this.changePasswordOwnerDialog.editedItem = item;
+        
+        this.$refs.changePasswordOwnerDialog.open();
+      },
+
+      openDeletePasswordDialog(item){
+        this.deletePasswordDialog.editedId = item.id;
+        this.$refs.deletePasswordDialog.open();
+      },
+
+      openRemoveMyPasswordAssignmentDialog(item){
+        this.removeMyPasswordAssignmentDialog.editedId = item.id;
+        this.$refs.removeMyPasswordAssignmentDialog.open();
+      },
     }
   }
 </script>

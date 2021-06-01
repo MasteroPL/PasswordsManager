@@ -292,7 +292,7 @@
       open(){
         this.permissionRead = this.defaultPermissionRead && this.allowPermissionRead;
         this.permissionShare = this.defaultPermissionShare && this.allowPermissionShare;
-        this.permissionUpdate = this.defaultUserPermissionUpdate && this.allowPermissionUpdate;
+        this.permissionUpdate = this.defaultPermissionUpdate && this.allowPermissionUpdate;
         this.permissionOwner = this.defaultPermissionOwner && this.allowPermissionOwner;
 
         this.deletePrompt.dialog = false;

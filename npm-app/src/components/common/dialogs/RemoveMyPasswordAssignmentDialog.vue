@@ -9,17 +9,11 @@
         <v-toolbar-title>Usuń hasło</v-toolbar-title>
       </v-toolbar>
 
-      <v-card-text style="padding-top:20px;">
+      <v-card-text style="padding-top: 20px">
         Czy na pewno chcesz usunąć hasło?
         <br /><br />
-        Usunięcie hasła spowoduje kompletne wymazanie go z pamięci. Nie będzie możliwe późniejsze odzyskanie hasła. Wszyscy przypisani użytkownicy stracą do niego dostęp.
-        <br /><br />
-        Jeśli chcesz usunąć hasło tylko dla siebie, przepisz najpierw właścicielstwo hasła na innego użytkownika i spróbuj ponownie.
+        Hasło zostanie usunięte tylko z Twojego konta. Pozostali użytkownicy nadal będą mieli do niego dostęp.
       </v-card-text>
-
-      <div style="padding: 10px;" class="global-error" v-if="globalError != null && globalError != ''">
-        {{ globalError }}
-      </div>
 
       <v-progress-linear
         v-if="loading"
@@ -48,12 +42,12 @@
 
 <script>
   export default {
-    name: "DeletePasswordDialog",
+    name: "RemoveMyPasswordAssignmentDialog",
     data: () => ({
       dialog: false,
       loading: false,
       disabled: false,
-      globalError: null
+      globalError: null      
     }),
     mounted() {
 
