@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 
 from django.db.models import Q, Value
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.http import Http404, HttpResponseForbidden
 from rest_framework.views import APIView
 from rest_framework import serializers
@@ -9,15 +9,19 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
 from rest_framework import generics
+from main.commons import serializilation_errors_to_response
 
-from main.generic_serializers import FullPasswordSerializer, FullUserPasswordAssignmentSerializer, UserSerializer
+from main.generic_serializers import MinimalPasswordSerializer, FullPasswordSerializer, FullUserPasswordAssignmentSerializer, UserPasswordAssignmentSerializer, UserSerializer
 from main.models import Password, UserPasswordAssignment
 from main.api.serializers import (
-	UserPasswordAssignmentSerializer, 
+	ChangePasswordOwnerAPIGetRequestSerializer,
+	ChangePasswordOwnerAPIPatchRequestSerializer,
+	UserPasswordAssignmentSerializer as UserPasswordAssignmentSerializerNoPasswordDetails, 
 	UserPasswordsRequestSerializer,
 	SharePasswordForUserAPIGetRequestSerializer,
 	SharePasswordForUserAPIPostRequestSerializer,
-	UserPasswordCreateRequestSerializer
+	UserPasswordCreateRequestSerializer,
+	EditPasswordRequestSerializer
 )
 from django.db.models.functions import Concat
 from django.core.exceptions import ValidationError
@@ -109,11 +113,11 @@ class UserPasswordsListAPI(generics.ListAPIView):
 		# Mapping other assignments to their passwords
 		for assignment in otherAssignments1:
 			result_tmp[assignment.password.id]["assigned_users"].append(
-				UserPasswordAssignmentSerializer(assignment).data
+				UserPasswordAssignmentSerializerNoPasswordDetails(assignment).data
 			)
 		for assignment in otherAssignments2:
 			result_tmp[assignment.password.id]["assigned_users"].append(
-				UserPasswordAssignmentSerializer(assignment).data
+				UserPasswordAssignmentSerializerNoPasswordDetails(assignment).data
 			)
 
 		# Finally mapping entire dictionary to an array
@@ -343,3 +347,248 @@ class SharePasswordForUserAPI(APIView):
 			return Response(FullUserPasswordAssignmentSerializer(assignment).data, status=status.HTTP_200_OK)
 
 		return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class EditPasswordAPI(APIView):
+
+	def get_serializer_class(self):
+		if self.request.method == "PATCH":
+			return EditPasswordRequestSerializer
+
+	def patch(self, request, password_code:str, format=None):
+		try:
+			password = Password.objects.get(code=password_code)
+		except Password.DoesNotExist:
+			raise Http404()
+
+		access, permission = password.user_has_access(request.user.id, read=False, update=True)
+		if not access:
+			raise Http404()
+
+		if not permission:
+			return Response(status=status.HTTP_403_FORBIDDEN)
+
+		serializer_cls = self.get_serializer_class()
+		serializer = serializer_cls(data=request.data)
+
+		if serializer.is_valid():
+			password.update_password(request.user.id, serializer.data["new_password"], serializer.data["title"], serializer.data["description"])
+
+			response = MinimalPasswordSerializer(password)
+
+			return Response(data=response.data, status=status.HTTP_200_OK)
+
+		# Processing errors
+		errors = serializilation_errors_to_response(serializer.errors)
+
+		return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ChangePasswordOwnerAPI(APIView):
+
+	def get_serializer_class(self):
+		if self.request.method == "GET":
+			return ChangePasswordOwnerAPIGetRequestSerializer
+		elif self.request.method == "PATCH":
+			return ChangePasswordOwnerAPIPatchRequestSerializer
+
+	def get_users_queryset(self, search:str="", limit:int=10):
+		if search is not None and search != "":
+			users_qs = User.objects.annotate(
+				full_search=Concat(
+					'email', Value(' '), 
+					'username', Value(' '), 
+					'first_name', Value(' '), 
+					'last_name', Value(' '), 
+					'first_name'
+				)
+			).filter(
+				full_search__icontains=search
+			).exclude(
+				id = self.request.user.id
+			).order_by('username')[:limit]
+		else:
+			users_qs = User.objects.all(
+			).exclude(
+				id = self.request.user.id
+			).order_by('username')[:limit]
+
+		return users_qs
+
+	def get(self, request, password_code:str, format=None):
+		'''
+		Used for querying which users can be assigned as new password owners
+		'''
+
+		try:
+			password = Password.objects.get(code=password_code)
+		except Password.DoesNotExist:
+			raise Http404()
+
+		access, permission = password.user_has_access(request.user.id, read=False)
+		if not access:
+			raise Http404()
+
+		if password.owner_id != request.user.id:
+			# Only password owner can access this method
+			return Response(status=status.HTTP_403_FORBIDDEN)
+		
+		serializer_cls = self.get_serializer_class()
+		serializer = serializer_cls(data=request.query_params)
+		if serializer.is_valid():
+			users_qs = self.get_users_queryset(serializer.data["search"], serializer.data["limit"])
+
+			return Response(data=UserSerializer(users_qs, many=True).data, status=status.HTTP_200_OK)
+
+		errors = serializilation_errors_to_response(serializer.errors)
+		return Response(data=errors, status=status.HTTP_400_BAD_REQUEST)
+
+	def patch(self, request, password_code:str, format=None):
+		'''
+		Actually assigns a new password owner 
+		'''
+		try:
+			password = Password.objects.get(code=password_code)
+		except Password.DoesNotExist:
+			raise Http404()
+
+		access, permission = password.user_has_access(request.user.id, read=False)
+		if not access:
+			raise Http404()
+
+		if password.owner_id != request.user.id:
+			# Only password owner can access this method
+			return Response(status=status.HTTP_403_FORBIDDEN)
+
+		serializer_cls = self.get_serializer_class()
+		serializer = serializer_cls(data=request.data)
+		if serializer.is_valid():
+			# Case of attempting to reassign self
+			if serializer.data["user_id"] == password.owner_id:
+				return Response(data={
+					"user_id": [
+						{
+							"string": "This user is already the main password owner",
+							"code": "USER_ALREADY_MAIN_OWNER"
+						}
+					]
+				}, status=status.HTTP_400_BAD_REQUEST)
+
+			try:
+				with transaction.atomic():
+					UserPasswordAssignment.objects.filter(
+						user_id = serializer.data["user_id"],
+						password_id = password.id
+					).delete()
+
+					new_assignment = UserPasswordAssignment(
+						user_id = request.user.id,
+						password = password,
+						read = True,
+						share = True,
+						update = True,
+						owner = True,
+						created_by_id = request.user.id,
+						updated_by_id = request.user.id
+					)
+					password.owner_id = serializer.data["user_id"]
+					password.save()
+					new_assignment.save()
+					new_assignment.password = password
+			except Exception as e:
+				return Response(data={
+					"message": "An internal server error occured when attempting to save changes"
+				}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+			response = UserPasswordAssignmentSerializer(new_assignment)
+			return Response(data=response.data, status=status.HTTP_200_OK)
+
+
+		errors = serializilation_errors_to_response(serializer.errors)
+		return Response(data=errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeletePasswordAPI(APIView):
+	
+	def get_serializer_class(self):
+		if self.request.method == "DELETE":
+			return None
+
+	def delete(self, request, password_code:str, format=None):
+		try:
+			password = Password.objects.get(code=password_code)
+		except Password.DoesNotExist:
+			raise Http404()
+
+		access, permission = password.user_has_access(request.user.id, read=False)
+		if not access:
+			raise Http404()
+
+		if password.owner_id != request.user.id:
+			# Only password owner can access this method
+			return Response(status=status.HTTP_403_FORBIDDEN)
+
+		try:
+			# Overriden to take care of password files alongside deleting the password from the database
+			password.delete()
+		except:
+			return Response(data={
+				"message": "An internal server error occured when attempting to save changes"
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+		return Response(status=status.HTTP_200_OK)
+
+class RemoveMyPasswordAssignmentAPI(APIView):
+	def get_serializer_class(self):
+		if self.request.method == "DELETE":
+			return None
+
+	def delete(self, request, password_code:str, format=None):
+		try:
+			password = Password.objects.get(code=password_code)
+		except Password.DoesNotExist:
+			raise Http404()
+
+		access, permission = password.user_has_access(request.user.id, read=False)
+		if not access:
+			raise Http404()
+
+		if password.owner_id == request.user.id:
+			# Only password owner can access this method
+			return Response(data={
+				"message": "As password main owner you cannot remove your own assignment to the password. Either delete the password entirely, or pass the ownership to another user before reattempting the request."
+			}, status=status.HTTP_403_FORBIDDEN)
+
+		try:
+			UserPasswordAssignment.objects.filter(password_id = password.id, user_id = request.user.id).delete()
+		except:
+			return Response(data={
+				"message": "An internal server error occured when attempting to save changes"
+			}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+		return Response(status=status.HTTP_200_OK)
+
+
+class DeleteUserPasswordAssignment(APIView):
+	def get_serializer_class(self):
+		if self.request.method == "DELETE":
+			return None
+
+	def delete(self, request, password_code:str, format=None):
+		try:
+			password = Password.objects.get(code=password_code)
+		except Password.DoesNotExist:
+			raise Http404()
+
+		# The long way of verifying permission
+		if password.owner_id != request.user_id:
+			my_assignment = UserPasswordAssignment.objects.filter(
+				password_id = password.id,
+				user_id = request.user.id
+			)
+			if my_assignment.count() == 0:
+				raise Http404()
+
+			my_assignment = my_assignment[0]
+
+			# TBC

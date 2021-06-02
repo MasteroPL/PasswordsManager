@@ -17,6 +17,11 @@ class FullUserSerializer(serializers.ModelSerializer):
 		fields = ["id", "username", "first_name", "last_name", "email", "is_active", "date_joined"]
 
 
+class MinimalPasswordSerializer(serializers.ModelSerializer):
+	class Meta:
+		model = Password
+		fields = [ "title", "description", "code", "owner", "created_by", "created_at", "updated_by", "updated_at"]
+
 class FullPasswordSerializer(serializers.ModelSerializer):
 
 	owner = UserSerializer()
@@ -34,6 +39,16 @@ class FullUserPasswordAssignmentSerializer(serializers.ModelSerializer):
 	created_by = UserSerializer()
 	updated_by = UserSerializer()
 	password = FullPasswordSerializer()
+
+	class Meta:
+		model = UserPasswordAssignment
+		fields = ["id", "user", "password", "read", "share", "update", "owner", "created_by", "created_at", "updated_by", "updated_at"]
+
+class UserPasswordAssignmentSerializer(serializers.ModelSerializer):
+	user = UserSerializer()
+	created_by = UserSerializer()
+	updated_by = UserSerializer()
+	password = MinimalPasswordSerializer()
 
 	class Meta:
 		model = UserPasswordAssignment

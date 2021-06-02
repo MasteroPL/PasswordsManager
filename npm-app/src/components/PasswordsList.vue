@@ -41,6 +41,12 @@
       :defaultPermissionOwner="editShareDialog.defaultPermissionOwner"
     ></edit-share-dialog>
 
+    <edit-password-dialog
+      ref="editPasswordDialog"
+      :defaultTitle="editPasswordDialog.defaultTitle"
+      :defaultDescription="editPasswordDialog.defaultDescription"
+    ></edit-password-dialog>
+
     <change-password-owner-dialog
       ref="changePasswordOwnerDialog"
       :userSelectionUseAPI="true"
@@ -126,6 +132,7 @@
                   icon
                   v-if="item.permissionUpdate || item.permissionUpdate"
                   color="secondary"
+                  @click="openEditPasswordDialog(item)"
                 >
                   <v-icon>mdi-pencil</v-icon>
                 </v-btn>
@@ -287,6 +294,8 @@
       },
 
       editShareDialog: {
+        editedItem: null,
+
         usernameSlot: null,
 
         allowPermissionRead: true,
@@ -297,6 +306,13 @@
         defaultPermissionShare: false,
         defaultPermissionUpdate: false,
         defaultPermissionOwner: false
+      },
+
+      editPasswordDialog: {
+        editedItem: null,
+
+        defaultTitle: null,
+        defaultDescription: null
       },
 
       changePasswordOwnerDialog: {
@@ -425,7 +441,7 @@
             isMyPassword: item.owner.id == this.userData.id,
             ownedBy: {
               id: item.owner.id,
-              name: item.owner.username
+              name: item.owner.username + " (" + item.owner.email + ")"
             },
             sharedOnBoards: [],
             sharedWithUsers: []
@@ -435,7 +451,7 @@
             assignment = item.assigned_users[j];
             tmp.sharedWithUsers.push({
               id: assignment.user.id,
-              name: assignment.user.username,
+              name: assignment.user.username + " (" + assignment.user.email + ")",
               permissionRead: assignment.read,
               permissionShare: assignment.share,
               permissionUpdate: assignment.update,
@@ -592,6 +608,17 @@
         var that = this;
         this.$nextTick(function() {
           that.$refs.editShareDialog.open();
+        });
+      },
+
+      openEditPasswordDialog(item){
+        this.editPasswordDialog.defaultTitle = item.title;
+        this.editPasswordDialog.defaultDescription = item.descriptionFull;
+        this.editPasswordDialog.editedItem = item;
+
+        var that = this;
+        this.$nextTick(function(){
+          that.$refs.editPasswordDialog.open();
         });
       },
 

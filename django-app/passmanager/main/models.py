@@ -7,6 +7,7 @@ from Crypto.Cipher import AES
 import os
 import uuid
 from django.conf import settings
+from shutil import copyfile
 
 class Password(models.Model):
 	TARGET_DIRECTORY = os.path.join("protected", "passwords")
@@ -35,6 +36,7 @@ class Password(models.Model):
 			raise ValidationError({
 				'password': ValidationError(message="Max allowed password length is 100 charates", code="PASSWORD_TOO_LONG")
 			})
+
 		valid_code = False
 		for i in range(5):
 			code = str(uuid.uuid4())
@@ -78,6 +80,89 @@ class Password(models.Model):
 				raise Password.FailedToCreatePasswordFileError()
 		
 		return instance
+
+	def _create_backup_file(self):
+		'''
+		Method for password file backup purposes
+		'''
+		pass_file_dest = os.path.join(Password.TARGET_DIRECTORY, self.code)
+		tmp_file_dest = os.path.join(Password.TARGET_DIRECTORY, "_" + self.code)
+
+		if not os.path.isfile(pass_file_dest):
+			raise IntegrityError("Password file does not exist")
+
+		if os.path.isfile(tmp_file_dest):
+			os.remove(tmp_file_dest)
+
+		# Creating a backup file in case changing the password fails
+		copyfile(pass_file_dest, tmp_file_dest)
+
+	def _restore_from_backup_file(self):
+		'''
+		Reverting to previous password file (if backup available)
+		'''
+		pass_file_dest = os.path.join(Password.TARGET_DIRECTORY, self.code)
+		tmp_file_dest = os.path.join(Password.TARGET_DIRECTORY, "_" + self.code)
+
+		if not os.path.isfile(tmp_file_dest):
+			raise IntegrityError("Missing backup file")
+
+		if os.path.isfile(pass_file_dest):
+			os.remove(pass_file_dest)
+
+		copyfile(tmp_file_dest, pass_file_dest)
+
+	def _remove_backup_file(self, raise_exception=False):
+		tmp_file_dest = os.path.join(Password.TARGET_DIRECTORY, "_" + self.code)
+		if os.path.isfile(tmp_file_dest):
+			os.remove(tmp_file_dest)
+		elif raise_exception:
+			raise IntegrityError("Missing backup file")
+
+
+	def _change_password(self, new_password:str):
+		if new_password is None or len(new_password) > 100:
+			raise ValueError("new_password can't be none or exceed 100 characters")
+
+		# Defining new password coding
+		salt = os.urandom(8)
+		full_key = settings.MAIN_APP.PASSWORDS_HS256_MAIN_KEY + salt
+		cipher = AES.new(full_key, AES.MODE_EAX)
+		nonce = cipher.nonce
+
+		ciphertext, tag = cipher.encrypt_and_digest(new_password.encode("utf-8"))
+		signature = tag + nonce + salt
+
+		# backup
+		old_signature = self.signature
+		old_updated_by_id = self.updated_by_id
+		self.signature = signature
+
+		backup_created = False
+		with transaction.atomic():
+			self.save()
+			
+			try:
+				self._create_backup_file()
+				backup_created = True
+				with open(os.path.join(Password.TARGET_DIRECTORY, self.code), "wb") as f:
+					f.write(ciphertext)
+			except:
+				# Ensuring data integrity
+				self.signature = old_signature
+				if backup_created:
+					try:
+						self._restore_from_backup_file()
+						self._remove_backup_file()
+					except:
+						pass
+				
+				# Raising exception to cancel changes in database
+				raise Password.FailedToCreatePasswordFileError()
+
+		# Backup file will no longer be needed
+		self._remove_backup_file()
+
 
 	@staticmethod
 	def _read(password):
@@ -166,6 +251,39 @@ class Password(models.Model):
 		:returns: Returns 2 bools. First determines whether user has access to the password, second whether the user is at least assigned to the password
 		'''
 		return Password.user_has_access_to_password(user_id, self, read=read, share=share, update=update, owner=owner)
+
+	def update_password(self, updated_by_id:int, new_password:str=None, new_title:str=None, new_description:str=None):
+		if new_password is None and new_title is None and new_description is None:
+			# No changes
+			return
+
+		self.updated_by_id = updated_by_id
+
+		if new_title is not None:
+			self.title = new_title
+		if new_description is not None:
+			self.description = new_description
+
+		if new_password is not None:
+			# Saving will be performed as part of below method
+			self._change_password(new_password)
+		else:
+			self.save()
+
+	def delete(self, *args, **kwargs):
+		password_file = os.path.join(Password.TARGET_DIRECTORY, self.code)
+		backup_file = os.path.join(Password.TARGET_DIRECTORY, "_" + self.code)
+
+		with transaction.atomic():
+			UserPasswordAssignment.objects.filter(password_id=self.id).delete()
+			super().delete(*args, **kwargs)
+
+			if os.path.isfile(backup_file):
+				os.remove(backup_file)
+
+			if os.path.isfile(password_file):
+				os.remove(password_file)
+
 
 	class Meta:
 		indexes = (
