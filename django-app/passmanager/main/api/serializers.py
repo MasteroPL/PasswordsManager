@@ -106,6 +106,30 @@ class SharePasswordForUserAPIPostRequestSerializer(serializers.Serializer):
 
 		return data
 
+class SharePasswordForUserAPIPatchRequestSerializer(serializers.Serializer):
+	permission_read = serializers.BooleanField(required=False, default=False)
+	permission_share = serializers.BooleanField(required=False, default=False)
+	permission_update = serializers.BooleanField(required=False, default=False)
+	permission_owner = serializers.BooleanField(required=False, default=False)
+
+	def validate(self, data):
+		data = super().validate(data)
+
+		permission_read = data["permission_read"]
+		permission_share = data["permission_share"]
+		permission_update = data["permission_update"]
+		permission_owner = data["permission_owner"]
+
+		if not permission_read and not permission_share and not permission_update and not permission_owner:
+			raise serializers.ValidationError(detail="No permission selected", code="NO_PERMISSION_SELECTED")
+
+		if permission_owner:
+			data["permission_read"] = True
+			data["permission_share"] = True
+			data["permission_update"] = True
+
+		return data
+
 class ChangePasswordOwnerAPIGetRequestSerializer(serializers.Serializer):
 	search = serializers.CharField(required=False, default=None)
 	limit = serializers.IntegerField(required=False, default=10)

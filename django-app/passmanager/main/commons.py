@@ -7,7 +7,7 @@ def bytes_to_uuid4str(b:bytes):
 
 	return result
 
-def serializilation_errors_to_response(source_errors:dict):
+def serialization_errors_to_response(source_errors:dict):
 	errors = {}
 	for error_key in source_errors.keys():
 		err_list = source_errors[error_key]

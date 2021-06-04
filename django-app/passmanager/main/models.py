@@ -309,6 +309,8 @@ class UserPasswordAssignment(models.Model):
 	update = models.BooleanField(default=False, verbose_name=_("Can_update"))
 	owner = models.BooleanField(default=False, verbose_name=_("Is_owner"))
 
+	assignment_owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, default=None, verbose_name=_("Assignment_owner"), related_name="userpasswordassignment_assignment_owner")
+
 	created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Created_by"), related_name="userpasswordassignment_created_by")
 	created_at = models.DateTimeField(null=False, blank=False, auto_now_add=True, verbose_name=_("Created_at"))
 	updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name=_("Updated_by"), related_name="userpasswordassignment_updated_by")
@@ -325,6 +327,39 @@ class UserPasswordAssignment(models.Model):
 	def save(self, *args, **kwargs):
 		self.full_clean()
 		super().save(*args, **kwargs)
+
+	def user_can_edit(self, user_id:int):
+		assignment = UserPasswordAssignment.objects.filter(
+			password = self.password,
+			user_id = user_id
+		)
+
+		# Case 1: assignment gives owner permission
+		# Only main owner can remove the assignment regardless of the assignment owner
+		if self.owner:
+			return self.password.owner_id == user_id
+
+		# For the remaining 2 cases, user requires a valid assignment to password
+		if assignment.count() == 0:
+			return False
+		assignment = assignment[0]
+
+		# Case 2: user has admin permissions to assignment
+		if assignment.owner:
+			return True
+
+		# Case 3: user is assignment owner, and the assignment is read only
+		return self.assignment_owner_id == user_id and not self.share and not self.update and not self.owner
+
+	def user_assignment_can_edit(self, assignment):
+		if self.owner:
+			return self.password.owner_id == assignment.user_id
+
+		if assignment.owner:
+			return True
+
+		return self.assignment_owner_id == assignment.user_id and not self.share and not self.update and not self.owner
+
 
 	class Meta:
 		unique_together = ("user", "password")
