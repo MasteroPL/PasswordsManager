@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container style="margin-bottom: 125px;">
     <new-password-dialog
       ref="newPasswordDialog"
       @confirmed="onNewPasswordDialogSubmit"
@@ -9,6 +9,7 @@
       color="secondary"
       fab
       dark
+      fixed
       style="position:fixed; bottom:40px; right: 40px;"
       @click="openNewPasswordDialog()"
     >
@@ -39,12 +40,16 @@
       :defaultPermissionShare="editShareDialog.defaultPermissionShare"
       :defaultPermissionUpdate="editShareDialog.defaultPermissionUpdate"
       :defaultPermissionOwner="editShareDialog.defaultPermissionOwner"
+
+      @confirmed="onEditShareDialogSubmit"
+      @delete="onEditShareDialogDeleteSubmit"
     ></edit-share-dialog>
 
     <edit-password-dialog
       ref="editPasswordDialog"
       :defaultTitle="editPasswordDialog.defaultTitle"
       :defaultDescription="editPasswordDialog.defaultDescription"
+      @confirmed="onEditPasswordDialogSubmit"
     ></edit-password-dialog>
 
     <change-password-owner-dialog
@@ -52,24 +57,29 @@
       :userSelectionUseAPI="true"
       :userSelectionAPI="changePasswordOwnerDialog.userSelectionAPI"
       :userSelectionAPILoadInitial="changePasswordOwnerDialog.userSelectionAPILoadInitial"
+
+      @confirmed="onChangePasswordOwnerDialogSubmit"
     ></change-password-owner-dialog>
 
     <!-- Dialog for completely removing a password from server memory -->
     <delete-password-dialog
       ref="deletePasswordDialog"
+      @confirmed="onDeletePasswordDialogSubmit"
     ></delete-password-dialog>
 
     <!-- Dialog for removing a password from user account (other users will still see it) -->
     <remove-my-password-assignment-dialog
       ref="removeMyPasswordAssignmentDialog"
+      @confirmed="onRemoveMyPasswordAssignmentDialogSubmit"
     ></remove-my-password-assignment-dialog>
 
     <v-data-table
+      ref="datatable"
       :headers="dataTable.headers"
       :items="dataTable.items"
-      :single-expand="true"
+      :single-expand="false"
       :expanded.sync="dataTable.expanded"
-      item-key="title"
+      item-key="id"
       show-expand
       hide-default-footer
 
@@ -83,10 +93,11 @@
       </template>
       <template v-slot:item="{ item, expand, isExpanded }" v-if="dataTable.mode == 'DEFAULT'">
         <tr>
-          <td class="text-start truncate">{{ item.title }}</td>
-          <td class="text-start truncate" style="width:70%">{{ item.descriptionFull }}</td>
+          <td class="text-start truncate" style="width:30%; max-width: 310px;">{{ item.title }}</td>
+          <td class="text-start truncate">{{ item.descriptionFull }}</td>
           <td class="text-start">
-            <button @click="expand(!isExpanded)" type="button" class="v-icon notranslate v-data-table__expand-icon v-icon--link mdi mdi-chevron-down"></button>
+            <button v-if="!isExpanded" @click="expand(!isExpanded)" type="button" class="v-icon notranslate v-data-table__expand-icon v-icon--link mdi mdi-chevron-down"></button>
+            <button v-else @click="expand(!isExpanded)" type="button" class="v-icon notranslate v-data-table__expand-icon v-icon--link mdi mdi-chevron-up"></button>
           </td>
         </tr>
       </template>
@@ -166,9 +177,9 @@
                 </v-btn>
               </div>
 
-              <div class="description">
-                {{ item.descriptionFull }}
-              </div>
+              <div class="title">{{ item.title }}</div>
+
+              <div class="description" style="white-space:pre-wrap">{{ item.descriptionFull }}</div>
 
               <v-list class="assignments">
                 <!-- Information about the password owner -->
@@ -184,7 +195,7 @@
                   </template>
 
                   <v-list-item
-                    link
+                    disabled
                   >
                     <v-list-item-title>{{ item.ownedBy.name }}</v-list-item-title>
 
@@ -212,7 +223,8 @@
                     v-for="(user) in item.sharedWithUsers"
                     :key="user.id" 
                     link
-                    @click="openEditShareDialog(item, user)"
+                    :disabled="!user.editable"
+                    @click="(user.editable) ? openEditShareDialog(item, user) : null"
                   >
                     <v-list-item-title>{{ user.name }}</v-list-item-title>
 
@@ -295,6 +307,7 @@
 
       editShareDialog: {
         editedItem: null,
+        editedShare: null,
 
         usernameSlot: null,
 
@@ -323,14 +336,14 @@
           headers: {},
           data: {}
         },
-        userSelectionAPIUrlTemplate: "https://localhost:8000/api/password/{ID}/change-ownership/"
+        userSelectionAPIUrlTemplate: "https://localhost:8000/api/password/{ID}/change-owner/"
       },
 
       deletePasswordDialog: {
-        editedId: null
+        editedItem: null
       },
       removeMyPasswordAssignmentDialog: {
-        editedId: null
+        editedItem: null
       },
 
       dataTable: {
@@ -408,7 +421,7 @@
     },
     methods: {
       handleResize(){
-        if(window.innerWidth < 550){
+        if(window.innerWidth < 600){
           this.dataTable.mode = "MOBILE";
         }
         else{
@@ -457,12 +470,13 @@
               permissionUpdate: assignment.update,
               permissionOwner: assignment.owner,
 
-              editable: true
+              editable: assignment.editable
             });
           }
 
           result.push(tmp);
         }
+        console.log(result);
         return result;
       },
 
@@ -534,7 +548,8 @@
                 permissionRead: feedback.permissionRead,
                 permissionShare: feedback.permissionShare,
                 permissionUpdate: feedback.permissionUpdate,
-                permissionOwner: feedback.permissionOwner
+                permissionOwner: feedback.permissionOwner,
+                editable: true
               });
             }
           });
@@ -606,8 +621,56 @@
         this.editShareDialog.usernameSlot = share.name;
 
         var that = this;
+        this.editShareDialog.editedItem = item;
+        this.editShareDialog.editedShare = share;
         this.$nextTick(function() {
           that.$refs.editShareDialog.open();
+        });
+      },
+      onEditShareDialogSubmit(data){
+        var that = this;
+        this.$refs.editShareDialog.defaultSubmit(
+          data,
+          this.editShareDialog.editedItem.id,
+          this.editShareDialog.editedShare.id
+        ).then((feedback) => {
+          if(feedback.status == "OK"){
+            that.$refs.editShareDialog.close();
+            
+            that.editShareDialog.editedShare.editable = true;
+            that.editShareDialog.editedShare.permissionRead = feedback.data.read;
+            that.editShareDialog.editedShare.permissionShare = feedback.data.share;
+            that.editShareDialog.editedShare.permissionUpdate = feedback.data.update;
+            that.editShareDialog.editedShare.permissionOwner = feedback.data.owner;
+
+            that.editShareDialog.editedItem = null;
+            that.editShareDialog.editedShare = null;
+          }
+        });
+      },
+      onEditShareDialogDeleteSubmit(){
+        var that = this;
+        this.$refs.editShareDialog.defaultDeleteSubmit(
+          this.editShareDialog.editedItem.id,
+          this.editShareDialog.editedShare.id
+        ).then((feedback) => {
+          if(feedback.status == "OK"){
+            that.$refs.editShareDialog.close();
+            
+            var shares = that.editShareDialog.editedItem.sharedWithUsers;
+            var tmp;
+            for(var i = 0; i < shares.length; i++){
+              tmp = shares[i];
+
+              if(tmp == that.editShareDialog.editedShare){
+                that.editShareDialog.editedItem.sharedWithUsers.splice(i, 1);
+                break;
+              }
+            }
+
+            that.editShareDialog.editedItem = null;
+            that.editShareDialog.editedShare = null;
+          }
         });
       },
 
@@ -621,6 +684,31 @@
           that.$refs.editPasswordDialog.open();
         });
       },
+      onEditPasswordDialogSubmit(data){
+        var that = this;
+        this.$refs.editPasswordDialog.defaultSubmit(
+          data,
+          this.editPasswordDialog.editedItem.id
+        ).then((feedback) => {
+          if(feedback.status == "OK"){
+            that.$refs.editPasswordDialog.close();
+            that.editPasswordDialog.editedItem.title = feedback.data.title;
+
+            that.editPasswordDialog.editedItem.descriptionShort = 
+              (feedback.data.description.length > 100) 
+                ? feedback.data.description.substring(0, 97) + "..." 
+                : feedback.data.description
+            ;
+            that.editPasswordDialog.editedItem.descriptionFull = feedback.data.description;
+
+            that.$nextTick(function(){
+              that.$set(that.$refs.datatable.expanded, that.editPasswordDialog.editedItem.id, true);
+
+              that.editPasswordDialog.editedItem = null;
+            });
+          }
+        });
+      },
 
       openChangePasswordOwnerDialog(item){
         var url = this.changePasswordOwnerDialog.userSelectionAPIUrlTemplate.replace("{ID}", item.id);
@@ -629,16 +717,81 @@
         
         this.$refs.changePasswordOwnerDialog.open();
       },
+      onChangePasswordOwnerDialogSubmit(data){
+        var that = this;
+        this.$refs.changePasswordOwnerDialog.defaultSubmit(
+          data.userId,
+          this.changePasswordOwnerDialog.editedItem.id
+        ).then((feedback) => {
+          if(feedback.status == "OK"){
+            var newOwner = feedback.data.password.owner;
+            that.$refs.changePasswordOwnerDialog.close();
+
+            that.changePasswordOwnerDialog.editedItem.ownedBy.id = newOwner.id;
+            that.changePasswordOwnerDialog.editedItem.ownedBy.name = newOwner.username + " (" + newOwner.email + ")";
+            that.changePasswordOwnerDialog.editedItem.isMyPassword = false;
+
+            var shares = that.changePasswordOwnerDialog.editedItem.sharedWithUsers;
+            var tmp;
+            var toRemove = null;
+            for(var i = 0; i < shares.length; i++){
+              tmp = shares[i];
+              // Removing assignment if user is the new main owner
+              if(tmp.id == newOwner.id){
+                toRemove = i;
+              }
+              else{
+                if(tmp.permissionOwner){
+                  tmp.editable = false;
+                }
+                else{
+                  tmp.editable = true;
+                }
+              }
+            }
+
+            if(toRemove != null){
+              that.changePasswordOwnerDialog.editedItem.sharedWithUsers.splice(toRemove, 1);
+            }
+
+            that.changePasswordOwnerDialog.editedItem = null;
+          }
+        });
+      },
 
       openDeletePasswordDialog(item){
-        this.deletePasswordDialog.editedId = item.id;
+        this.deletePasswordDialog.editedItem = item;
         this.$refs.deletePasswordDialog.open();
+      },
+      onDeletePasswordDialogSubmit(){
+        var that = this;
+        this.$refs.deletePasswordDialog.defaultSubmit(
+          this.deletePasswordDialog.editedItem.id
+        ).then((feedback) => {
+          if(feedback.status == "OK"){
+            that.$refs.deletePasswordDialog.close();
+            that.updateTable();
+            that.deletePasswordDialog.editedItem = null;
+          }
+        });
       },
 
       openRemoveMyPasswordAssignmentDialog(item){
-        this.removeMyPasswordAssignmentDialog.editedId = item.id;
+        this.removeMyPasswordAssignmentDialog.editedItem = item;
         this.$refs.removeMyPasswordAssignmentDialog.open();
       },
+      onRemoveMyPasswordAssignmentDialogSubmit(){
+        var that = this;
+        this.$refs.removeMyPasswordAssignmentDialog.defaultSubmit(
+          this.removeMyPasswordAssignmentDialog.editedItem.id
+        ).then((feedback) => {
+          if(feedback.status == "OK"){
+            that.$refs.removeMyPasswordAssignmentDialog.close();
+            that.updateTable();
+            that.removeMyPasswordAssignmentDialog.editedItem = null;
+          }
+        });
+      }
     }
   }
 </script>
@@ -649,6 +802,13 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .theme--light .passwords-list-item-details .non-editable-assignment {
+    color: rgba(0, 0, 0, 0.5);
+  }
+  .theme--dark .passwords-list-item-details .non-editable-assignment {
+    color: rgba(255, 255, 255, 0.5);
   }
 
   .v-data-table > .v-data-table__wrapper tbody tr.v-data-table__expanded__content {

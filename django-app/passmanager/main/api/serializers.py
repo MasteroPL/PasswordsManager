@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework.exceptions import ErrorDetail
 from main.models import Password, UserPasswordAssignment
-from main.generic_serializers import UserSerializer
+from main.generic_serializers import FullPasswordSerializer, UserSerializer
 
 class UserPasswordAssignmentSerializer(serializers.ModelSerializer):
 	user = UserSerializer()
@@ -40,9 +40,9 @@ class SharePasswordForUserAPIGetRequestSerializer(serializers.Serializer):
 
 
 class EditPasswordRequestSerializer(serializers.Serializer):
-	new_password = serializers.CharField(required=False, default=None)
-	title = serializers.CharField(required=False, default=None)
-	description = serializers.CharField(required=False, default=None)
+	new_password = serializers.CharField(required=False, default=None, allow_null=True)
+	title = serializers.CharField(required=False, default=None, allow_null=True)
+	description = serializers.CharField(required=False, default=None, allow_null=True)
 
 	def validate(self, data):
 		data = super().validate(data)
@@ -168,6 +168,16 @@ class ChangePasswordOwnerAPIPatchRequestSerializer(serializers.Serializer):
 			)})
 
 		return data
+
+class ChangePasswordOwnerAPIPatchResponseSerializer(serializers.ModelSerializer):
+	user = UserSerializer()
+	created_by = UserSerializer()
+	updated_by = UserSerializer()
+	password = FullPasswordSerializer()
+
+	class Meta:
+		model = UserPasswordAssignment
+		fields = ["id", "user", "password", "read", "share", "update", "owner", "created_by", "created_at", "updated_by", "updated_at"]
 
 class DeleteUserPasswordAssignmentDeleteRequestSerializer(serializers.Serializer):
 	user_id = serializers.IntegerField(required=True)

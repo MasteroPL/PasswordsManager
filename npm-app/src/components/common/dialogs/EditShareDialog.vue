@@ -212,7 +212,10 @@
 </template>
 
 <script>
-  
+  import appConfig from "@/config"
+  import axios from "axios"
+  const DEFAULT_SUBMIT_URL = "api/password/{PASSWORD_CODE}/assignment/{USER_ID}/";
+
   export default {
     name: 'EditShareDialog',
 
@@ -348,10 +351,111 @@
         this.$emit("delete");
       },
 
-      defaultSubmit(assignmentId, data){
-        console.log(assignmentId);
-        console.log(data);
-      }
+      defaultSubmit(data, passwordCode, userId){
+        this.startLoading();
+        this.disable();
+
+        var that = this;
+        var submitUrl = DEFAULT_SUBMIT_URL.replace("{PASSWORD_CODE}", passwordCode).replace("{USER_ID}", userId);
+        return axios({
+          url: appConfig.apiUrl + submitUrl,
+          method: "patch",
+          data: {
+            permission_read: data.read,
+            permission_share: data.share,
+            permission_update: data.update,
+            permission_owner: data.owner
+          }
+        }).then((req) => {
+          that.stopLoading();
+          that.enable();
+          var response = req.data;
+
+          return {
+            status: "OK",
+            data: response
+          };
+        }).catch((error) => {
+          that.stopLoading();
+          that.enable();
+
+          if(error.response){
+            if(error.response.status == 403 || error.response.status == 401){
+              that.globalError = "Odmowa dostępu";
+            }
+            else if(error.response.status == 400){
+              if(error.response.data["non_field_errors"] !== undefined){
+                if(error.response.data["non_field_errors"][0]["code"] == "NO_PERMISSION_SELECTED"){
+                  that.globalError = "Nie zaznaczono uprawnień.";
+                }
+                else{
+                  that.globalError = "Wystąpił nierozpoznany błąd";
+                }
+              }
+            }
+            else{
+              that.globalError = "Wystąpił nierozpoznany błąd";
+            }
+
+            return {
+              status: "ERR",
+              data: error.response
+            };
+          }
+          else{
+            that.globalError = "Błąd sieci. Spróbuj ponownie później.";
+          }
+
+          return {
+            status: "ERR"
+          };
+        });
+      },
+
+      defaultDeleteSubmit(passwordCode, userId){
+        this.startLoading();
+        this.disable();
+
+        var that = this;
+        var submitUrl = DEFAULT_SUBMIT_URL.replace("{PASSWORD_CODE}", passwordCode).replace("{USER_ID}", userId);
+        return axios({
+          url: appConfig.apiUrl + submitUrl,
+          method: "delete"
+        }).then((req) => {
+          that.stopLoading();
+          that.enable();
+          var response = req.data;
+
+          return {
+            status: "OK",
+            data: response
+          };
+        }).catch((error) => {
+          that.stopLoading();
+          that.enable();
+
+          if(error.response){
+            if(error.response.status == 403 || error.response.status == 401){
+              that.globalError = "Odmowa dostępu";
+            }
+            else{
+              that.globalError = "Wystąpił nierozpoznany błąd";
+            }
+
+            return {
+              status: "ERR",
+              data: error.response
+            };
+          }
+          else{
+            that.globalError = "Błąd sieci. Spróbuj ponownie później.";
+          }
+
+          return {
+            status: "ERR"
+          };
+        });
+      },
     }
   }
 </script>

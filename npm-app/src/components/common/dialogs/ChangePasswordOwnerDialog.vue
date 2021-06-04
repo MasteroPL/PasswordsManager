@@ -97,10 +97,10 @@
           >Nie</v-btn>
           <v-btn
             text
-            color="red"
+            color="primary"
             :disabled="disabled"
             @click="confirmationPromptConfirm()"
-          >Usuń</v-btn>
+          >Zmień</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -108,7 +108,9 @@
 </template>
 
 <script>
+  import appConfig from "@/config"
   import axios from "axios"
+  const DEFAULT_SUBMIT_URL = "api/password/{PASSWORD_CODE}/change-owner/";
 
   export default {
     name: "ChangePasswordOwnerDialog",
@@ -266,9 +268,62 @@
         this.$emit("confirmed", result);
       },
 
-      defaultSubmit(passwordId, userId){
-        console.log(passwordId);
-        console.log(userId);
+      defaultSubmit(userId, passwordCode){
+        this.startLoading();
+        this.disable();
+
+        var that = this;
+        var submitUrl = DEFAULT_SUBMIT_URL.replace("{PASSWORD_CODE}", passwordCode);
+        return axios({
+          url: appConfig.apiUrl + submitUrl,
+          method: "patch",
+          data: {
+            user_id: userId
+          }
+        }).then((req) => {
+          that.stopLoading();
+          that.enable();
+          var response = req.data;
+
+          return {
+            status: "OK",
+            data: response
+          };
+        }).catch((error) => {
+          that.stopLoading();
+          that.enable();
+
+          if(error.response){
+            if(error.response.status == 403 || error.response.status == 401){
+              that.globalError = "Odmowa dostępu";
+            }
+            else if(error.response.status == 400){
+              if(error.response.data["user_id"] !== undefined){
+                if(error.response.data["user_id"][0]["code"] == "USER_DOES_NOT_EXIST"){
+                  that.userErrors = [ "Użytkownik nie istnieje" ];
+                }
+                else{
+                  that.userErrors = [ "Wystąpił nierozpoznany błąd" ];
+                }
+              }
+            }
+            else{
+              that.globalError = "Wystąpił nierozpoznany błąd";
+            }
+
+            return {
+              status: "ERR",
+              data: error.response
+            };
+          }
+          else{
+            that.globalError = "Błąd sieci. Spróbuj ponownie później.";
+          }
+
+          return {
+            status: "ERR"
+          };
+        });
       },
 
       invokeUpdateUserAutocomplete() {

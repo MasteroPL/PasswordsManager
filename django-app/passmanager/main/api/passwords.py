@@ -16,6 +16,7 @@ from main.models import Password, UserPasswordAssignment
 from main.api.serializers import (
 	ChangePasswordOwnerAPIGetRequestSerializer,
 	ChangePasswordOwnerAPIPatchRequestSerializer,
+	ChangePasswordOwnerAPIPatchResponseSerializer,
 	DeleteUserPasswordAssignmentDeleteRequestSerializer,
 	SharePasswordForUserAPIPatchRequestSerializer,
 	UserPasswordAssignmentSerializer as UserPasswordAssignmentSerializerNoPasswordDetails, 
@@ -382,6 +383,7 @@ class UserPasswordAssignmentAPI(APIView):
 
 		qs = UserPasswordAssignment.objects.filter(password__code=password_code, user_id=request.user.id)
 		assignment = UserPasswordAssignment.objects.filter(password__code=password_code, user_id=user_id)
+		my_assignment = None
 
 		if assignment.count() == 0:
 			raise Http404()
@@ -396,10 +398,6 @@ class UserPasswordAssignmentAPI(APIView):
 			if password.owner_id != request.user.id:
 				# This user is not assigned to the password, as far as they're concerned, it doesn't exist
 				raise Http404()
-
-		# Checking whether the user can edit the assignment
-		if not assignment.user_assignment_can_edit(my_assignment):
-			return Response(status=status.HTTP_403_FORBIDDEN)
 
 		serializer_cls = self.get_serializer_class()
 		serializer = serializer_cls(data=request.data)
@@ -421,7 +419,7 @@ class UserPasswordAssignmentAPI(APIView):
 
 			# Case 3. Attempting to assign readonly permissions
 			else:
-				if not my_assignment.share:
+				if password.owner_id != request.user.id and not my_assignment.share:
 					return Response(status=status.HTTP_403_FORBIDDEN)
 
 
@@ -648,7 +646,7 @@ class ChangePasswordOwnerAPI(APIView):
 					"message": "An internal server error occured when attempting to save changes"
 				}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-			response = UserPasswordAssignmentSerializer(new_assignment)
+			response = ChangePasswordOwnerAPIPatchResponseSerializer(new_assignment)
 			return Response(data=response.data, status=status.HTTP_200_OK)
 
 

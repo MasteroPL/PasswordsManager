@@ -54,6 +54,7 @@
           :disabled="disabled"
           :error-messages="descriptionErrors"
           :maxlength="500"
+          style="font-size:14px"
         ></v-textarea>
       </v-card-text>
 
@@ -88,6 +89,10 @@
 </template>
 
 <script>
+  import appConfig from "@/config"
+  import axios from "axios"
+  const DEFAULT_SUBMIT_URL = "api/password/{PASSWORD_CODE}/edit/";
+
   export default {
     name: "EditPasswordDialog",
     data: () => ({
@@ -102,8 +107,10 @@
       newPasswordValueErrors: [],
       
       title: null,
+      titleChanged: false,
       titleErrors: [],
       description: null,
+      descriptionChanged: false,
       descriptionErrors: []
     }),
     mounted() {
@@ -131,12 +138,23 @@
         default: null
       }
     },
+    watch: {
+      "title": function(){
+        this.titleChanged = true;
+      },
+      "description": function(){
+        this.descriptionChanged = true;
+      }
+    },
     methods: {
       open(){
         this.updatePasswordValueEnabled = this.defaultUpdatePasswordValueEnabled;
         this.newPasswordValue = this.defaultNewPasswordValue;
         this.title = this.defaultTitle;
         this.description = this.defaultDescription;
+
+        this.titleChanged = false;
+        this.descriptionChanged = false;
 
         this.dialog = true;
       },
@@ -166,11 +184,12 @@
           return;
         }
 
+        var tmpDesc = (this.description == null || this.description == "") ? "Brak opisu" : this.description;
+
         var result = {
-          updatePasswordEnabled: this.updatePasswordValueEnabled,
           newPassword: (this.updatePasswordValueEnabled) ? this.newPasswordValue : null,
-          title: this.title,
-          description: (this.description == null || this.description == "") ? "Brak opisu" : this.description
+          title: (this.titleChanged) ? this.title : null,
+          description: (this.descriptionChanged) ? tmpDesc : null
         };
 
         this.$emit("confirmed", result);
@@ -195,6 +214,87 @@
       },
       disable(){
         this.disabled = true;
+      },
+      defaultSubmit(data, passwordCode){
+        this.startLoading();
+        this.disable();
+
+        var that = this;
+        var submitUrl = DEFAULT_SUBMIT_URL.replace("{PASSWORD_CODE}", passwordCode);
+        return axios({
+          url: appConfig.apiUrl + submitUrl,
+          method: "patch",
+          data: {
+            new_password: data.newPassword,
+            title: data.title,
+            description: data.description
+          }
+        }).then((req) => {
+          that.stopLoading();
+          that.enable();
+          var response = req.data;
+
+          return {
+            status: "OK",
+            data: response
+          };
+        }).catch((error) => {
+          that.stopLoading();
+          that.enable();
+
+          if(error.response){
+            if(error.response.status == 403 || error.response.status == 401){
+              that.globalError = "Odmowa dostępu";
+            }
+            else if(error.response.status == 400){
+              // NewPassword errors
+              if (error.response.data["new_password"] !== undefined){
+                // Password longer than 100 charcters
+                if(error.response.data["new_password"][0]["code"] == "PASSWORD_TOO_LONG"){
+                  that.newPasswordValueErrors = [ "Hasło nie może przekraczać 100 znaków" ];
+                }
+                else {
+                  that.newPasswordValueErrors = [ "Wystąpił nierozpoznany błąd" ];
+                }
+              } 
+              // Title errors
+              if (error.response.data["title"] !== undefined){
+                // Title longer than 50 characters
+                if(error.response.data["title"][0]["code"] == "TITLE_TOO_LONG"){
+                  that.titleErrors = [ "Tytuł nie może przekraczać 50 znaków" ];
+                }
+                else{
+                  that.titleErrors = [ "Wystąpił nierozpoznany błąd" ];
+                }
+              }
+              // Description errors
+              if(error.response.data["description"] !== undefined){
+                // Description longer than 500 characters
+                if(error.response.data["description"][0]["code"] == "DESCRIPTION_TOO_LONG"){
+                  that.descriptionErrors = [ "Opis nie może przekraczać 500 znaków" ];
+                }
+                else{
+                  that.descriptionErrors = [ "Wystąpił nierozpoznany błąd" ];
+                }
+              }
+            }
+            else {
+              that.globalError = "Wystąpił nierozpoznany błąd";
+            }
+
+            return {
+              status: "ERR",
+              data: error.response
+            };
+          }
+          else {
+            that.globalError = "Błąd sieci. Spróbuj ponownie później.";
+          }
+
+          return {
+            status: "ERR"
+          };
+        });
       }
     }
   }

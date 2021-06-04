@@ -38,6 +38,7 @@
           :disabled="disabled"
           :error-messages="descriptionErrors"
           :maxlength="500"
+          style="font-size:14px"
         ></v-textarea>
       </v-card-text>
 
@@ -196,12 +197,12 @@
               that.globalError = "Odmowa dostępu";
             }
             else if(error.response.status == 400){
-              if(error.response["__all__"] !== undefined){
+              if(error.response.data["__all__"] !== undefined){
                 that.globalError = "Wystąpił nierozpoznany błąd. Spróbuj ponownie później.";
               }
               else{
-                if (error.response["password"] !== undefined){
-                  if(error.response["password"][0][0] == "Max allowed password length is 100 characters"){
+                if (error.response.data["password"] !== undefined){
+                  if(error.response.data["password"][0][0] == "Max allowed password length is 100 characters"){
                     that.passwordErrors = [ "Maksymalna dozwolona długość hasła to 100 znaków" ];
                   }
                   else{
@@ -216,9 +217,9 @@
               data: error.response
             };
           }
-          else{{
+          else{
             that.globalError = "Błąd sieci. Spróbuj ponownie później.";
-          }}
+          }
 
           return {
             status: "ERR"
