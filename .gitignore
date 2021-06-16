@@ -130,3 +130,11 @@ dmypy.json
 .vscode/
 database/database/persistant_storage/
 django-app/passmanager/protected/passwords/
+django-app/passmanager/public/static/
+dockerized/app/protected/passwords/
+dockerized/app/protected/
+dockerized/app/source_files/
+dockerized/database/persistent_storage/
+dockerized/nginx/snippets/
+dockerized/npm/source_files/
+dockerized/ssl/

@@ -10,8 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 from datetime import timedelta
+from posix import environ
 import main.settings
 
 MAIN_APP = main.settings
@@ -24,12 +26,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# Dev key
 SECRET_KEY = 'django-insecure-wk77n23zlf!1uwe^!plrvy52y%s3290k7^m-lz4!02)yvku+-9'
+if os.environ.__contains__("SECRET_KEY"):
+    SECRET_KEY = os.environ["SECRET_KEY"] # PROD KEY
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+if os.environ.__contains__("DEBUG"):
+    DEBUG = os.environ["DEBUG"] == "True"
 
-ALLOWED_HOSTS = [ "localhost", "http://localhost:8080", "http://localhost:8080/", "http://localhost:8000", "http://localhost:8000/" ]
+ALLOWED_HOSTS = [ "*" ]
+if os.environ.__contains__("ALLOWED_HOSTS"):
+    ALLOWED_HOSTS = os.environ["ALLOWED_HOSTS"].split(" ")
 
 
 # Application definition
@@ -43,7 +53,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
-    'sslserver',
     'main',
 ]
 
@@ -72,7 +81,13 @@ CORS_ORIGIN_WHITELIST = [
     "http://localhost:8080",
     "https://localhost:8000",
     "https://localhost:8080",
+
+    # # PROD
+    # "https://localhost:8085",
+    # "https://localhost:8083"
 ]
+if os.environ.__contains__("CORS_ORIGIN_WHITELIST"):
+    CORS_ORIGIN_WHITELIST = os.environ["CORS_ORIGIN_WHITELIST"].split(" ")
 
 ROOT_URLCONF = 'passmanager.urls'
 
@@ -98,13 +113,27 @@ WSGI_APPLICATION = 'passmanager.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
+db_host = 'passmanager_db'
+db_name = 'passmanager_db'
+db_user = 'admin'
+db_password = 'Admin123!'
+
+if os.environ.__contains__("DB_HOST"):
+    db_host = os.environ["DB_HOST"]
+if os.environ.__contains__("DB_NAME"):
+    db_name = os.environ["DB_NAME"]
+if os.environ.__contains__("DB_USER"):
+    db_user = os.environ["DB_USER"]
+if os.environ.__contains__("DB_PASSWORD"):
+    db_password = os.environ["DB_PASSWORD"]
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'passmanager_dev01',
-        'USER': 'admin',
-        'PASSWORD': 'Admin123!',
-        'HOST': '127.0.0.1',
+        'NAME': db_name,
+        'USER': db_user,
+        'PASSWORD': db_password,
+        'HOST': db_host,
         'PORT': '3306',
     }
 }
@@ -147,6 +176,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
+
+STATIC_ROOT = os.path.join(BASE_DIR, "public", "static")
+MEDIA_ROOT = os.path.join(BASE_DIR, "public", "media")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field

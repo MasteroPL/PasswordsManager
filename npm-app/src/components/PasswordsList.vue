@@ -302,7 +302,7 @@
           data: {}
         },
         editedItem: null,
-        userSelectionAPIUrlTemplate: "https://localhost:8000/api/password/{ID}/share/user/",
+        userSelectionAPIUrlTemplate: appConfig.apiUrl + "api/password/{ID}/share/user/",
       },
 
       editShareDialog: {
@@ -336,7 +336,7 @@
           headers: {},
           data: {}
         },
-        userSelectionAPIUrlTemplate: "https://localhost:8000/api/password/{ID}/change-owner/"
+        userSelectionAPIUrlTemplate: appConfig.apiUrl + "api/password/{ID}/change-owner/"
       },
 
       deletePasswordDialog: {
