@@ -138,3 +138,4 @@ dockerized/database/persistent_storage/
 dockerized/nginx/snippets/
 dockerized/npm/source_files/
 dockerized/ssl/
+dockerized/app/_arch/

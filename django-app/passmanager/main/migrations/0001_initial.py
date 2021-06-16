@@ -52,44 +52,4 @@ class Migration(migrations.Migration):
             model_name='password',
             index=models.Index(fields=['title'], name='title_idx'),
         ),
-        # Database integrity validation triggers
-        migrations.RunSQL("""
-CREATE TRIGGER main_password_tr_upd BEFORE UPDATE ON main_password
-FOR EACH ROW
-BEGIN
-	IF EXISTS (SELECT 1 FROM main_userpasswordassignment WHERE main_userpasswordassignment.user_id = NEW.owner_id) THEN
-		SIGNAL SQLSTATE '45000'
-			SET MESSAGE_TEXT = 'Duplicate for assignment to password. Password main owner cannot be assigned to the password again';
-	END IF;
-END
-        """, 
-        reverse_sql="""
-DROP TRIGGER main_password_tr_upd
-        """),
-        migrations.RunSQL("""
-CREATE TRIGGER main_userpasswordassignment_tr_ins BEFORE INSERT ON main_userpasswordassignment
-FOR EACH ROW
-BEGIN
-	IF EXISTS (SELECT 1 FROM main_password WHERE main_password.owner_id = NEW.user_id) THEN
-		SIGNAL SQLSTATE '45000'
-			SET MESSAGE_TEXT = 'Duplicate for assignment to password. Password main owner cannot be assigned to the password again';
-	END IF;
-END
-        """,
-        reverse_sql="""
-DROP TRIGGER main_userpasswordassignment_tr_ins
-        """),
-        migrations.RunSQL("""
-CREATE TRIGGER main_userpasswordassignment_tr_upd BEFORE UPDATE ON main_userpasswordassignment
-FOR EACH ROW
-BEGIN
-	IF EXISTS (SELECT 1 FROM main_password WHERE main_password.owner_id = NEW.user_id) THEN
-		SIGNAL SQLSTATE '45000'
-			SET MESSAGE_TEXT = 'Duplicate for assignment to password. Password main owner cannot be assigned to the password again';
-	END IF;
-END
-        """,
-        reverse_sql="""
-DROP TRIGGER main_userpasswordassignment_tr_upd
-        """)
     ]

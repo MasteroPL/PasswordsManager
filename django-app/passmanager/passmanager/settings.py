@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 import os
 from pathlib import Path
 from datetime import timedelta
-from posix import environ
 import main.settings
 
 MAIN_APP = main.settings
@@ -54,6 +53,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'main',
+    'sslserver'
 ]
 
 MIDDLEWARE = [
@@ -75,7 +75,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated'
     ]
 }
-#CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_ALLOW_ALL = True
 CORS_ORIGIN_WHITELIST = [
     "http://localhost:8000",
     "http://localhost:8080",
@@ -113,8 +113,8 @@ WSGI_APPLICATION = 'passmanager.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-db_host = 'passmanager_db'
-db_name = 'passmanager_db'
+db_host = 'localhost'
+db_name = 'passmanager_dev01'
 db_user = 'admin'
 db_password = 'Admin123!'
 
