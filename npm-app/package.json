@@ -12,6 +12,7 @@
     "convert-hex": "^0.1.0",
     "copy-to-clipboard": "^3.3.1",
     "core-js": "^3.12.1",
+    "material-design-icons-iconfont": "^6.1.0",
     "node-rsa": "^1.1.1",
     "vue": "^2.6.11",
     "vue-router": "^3.5.1",

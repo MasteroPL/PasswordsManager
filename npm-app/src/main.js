@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import App from './App.vue'
+import 'material-design-icons-iconfont/dist/material-design-icons.css'
 
 // custom styles
 import './assets/css/styles.scss'
@@ -20,6 +21,7 @@ import EditPasswordDialog from './components/common/dialogs/EditPasswordDialog'
 import DeletePasswordDialog from './components/common/dialogs/DeletePasswordDialog.vue'
 import RemoveMyPasswordAssignmentDialog from './components/common/dialogs/RemoveMyPasswordAssignmentDialog.vue'
 import ChangePasswordOwnerDialog from './components/common/dialogs/ChangePasswordOwnerDialog.vue'
+import BoardCard from './components/common/misc/BoardCard.vue'
 
 Vue.component('share-dialog', ShareDialog);
 Vue.component('new-password-dialog', NewPasswordDialog);
@@ -28,6 +30,7 @@ Vue.component('edit-password-dialog', EditPasswordDialog);
 Vue.component('delete-password-dialog', DeletePasswordDialog);
 Vue.component('remove-my-password-assignment-dialog', RemoveMyPasswordAssignmentDialog);
 Vue.component('change-password-owner-dialog', ChangePasswordOwnerDialog);
+Vue.component('board-card', BoardCard);
 
 // Credits to LinusBorg: https://forum.vuejs.org/t/conditionally-render-parent-element/9324
 Vue.component('with-root', {
