@@ -119,16 +119,23 @@
 						</div>
 						<div class="board-desktop-right__item-div clickable"
 							v-ripple
+							@click="onUsernameClick(item)"
 						>
 							{{ item.username }}
 						</div>
 						<div class="board-desktop-right__item-div clickable"
 							v-ripple
+							@click="onPasswordClick(item)"
 						>
-							********
+							<span v-if="!item.passwordLoader">************</span>
+							<v-progress-linear v-else indeterminate
+								style="margin-top: 15px;"
+								color="secondary"
+							></v-progress-linear>
 						</div>
 						<div class="board-desktop-right__item-div clickable"
 							v-ripple
+							@click="onUrlClick(item)"
 						>
 							{{ item.url }}
 						</div>
@@ -189,140 +196,48 @@
 		<!--
 			Popups / Dialogs section
 		-->
-		<v-dialog
-			scrollable
-			max-width="350px"
-			v-model="passwordDetailsDialog.model"
-		>
-			<v-card>
-				<v-card-title>Password details</v-card-title>
+		<GenericPasswordDetailsDialog
+			ref="GenericPasswordDetailsDialog"
 
-				<v-divider></v-divider>
+			:passwordId="passwordDetailsDialog.passwordId"
+			:title="passwordDetailsDialog.title"
+			:username="passwordDetailsDialog.username"
+			:url="passwordDetailsDialog.url"
+			:notes="passwordDetailsDialog.notes"
+			:permissionRead="permissionRead"
+			:permissionUpdate="permissionUpdate"
+			:permissionDelete="permissionDelete"
+		></GenericPasswordDetailsDialog>
 
-				<v-list
-				>
-					<!-- Title -->
-					<v-list-item>
-						<v-list-item-content>
-							<v-list-item-subtitle>TITLE</v-list-item-subtitle>
-							<v-list-item-title>{{ passwordDetailsDialog.title }}</v-list-item-title>
-						</v-list-item-content>
-					</v-list-item>
+		<v-snackbar
+      v-model="copiedToClickboardSnackbar.model"
+    >
+      <v-icon small style="padding-right: 10px">mdi-check</v-icon> Value copied to clipboard
 
-					<!-- Username -->
-					<v-list-item
-						@click="onPasswordDialogUsernameCopyClick()"
-						v-if="passwordDetailsDialog.username != null"
-					>
-						<v-list-item-content>
-							<v-list-item-subtitle>USERNAME</v-list-item-subtitle>
-							<v-list-item-title>{{ passwordDetailsDialog.username }}</v-list-item-title>
-						</v-list-item-content>
-
-						<v-list-item-action>
-							<v-icon color="secondary"
-								v-if="passwordDetailsDialog.usernameCopyTimeout == null"
-							>mdi-content-copy</v-icon>
-							<v-icon color="secondary"
-								v-else
-							>mdi-check</v-icon>
-						</v-list-item-action>
-					</v-list-item>
-
-					<!-- Password -->
-					<v-list-item
-						:disabled="!permissionRead || passwordDetailsDialog.passwordCopyLoader"
-						@click="onPasswordDialogPasswordCopyClick()"
-					>
-						<v-list-item-content>
-							<v-list-item-subtitle>PASSWORD</v-list-item-subtitle>
-							<v-list-item-title>********</v-list-item-title>
-						</v-list-item-content>
-
-						<v-list-item-action v-if="permissionRead">
-							<v-progress-circular
-								indeterminate
-								:size="24"
-								v-if="passwordDetailsDialog.passwordCopyLoader"
-							></v-progress-circular>
-							<v-icon color="secondary"
-								v-else-if="passwordDetailsDialog.passwordCopyTimeout == null"
-							>mdi-content-copy</v-icon>
-							<v-icon color="secondary"
-								v-else
-							>mdi-check</v-icon>
-						</v-list-item-action>
-					</v-list-item>
-
-					<!-- URL -->
-					<v-list-item
-						@click="onPasswordDialogUrlCopyClick()"
-						v-if="passwordDetailsDialog.url != null"
-					>
-						<v-list-item-content>
-							<v-list-item-subtitle>URL</v-list-item-subtitle>
-							<v-list-item-title>{{ passwordDetailsDialog.url }}</v-list-item-title>
-						</v-list-item-content>
-
-						<v-list-item-action>
-							<v-icon color="secondary"
-								v-if="passwordDetailsDialog.urlCopyTimeout == null"
-							>mdi-content-copy</v-icon>
-							<v-icon color="secondary"
-								v-else
-							>mdi-check</v-icon>
-						</v-list-item-action>
-					</v-list-item>
-
-					<!-- Notes -->
-					<v-list-item
-						v-if="passwordDetailsDialog.notes != null"
-					>
-						<v-list-item-content>
-							<v-list-item-subtitle>NOTES</v-list-item-subtitle>
-							<v-list-item-title class="board-details-dialog__notes" v-html="passwordDetailsDialog.notes"></v-list-item-title>
-						</v-list-item-content>
-					</v-list-item>
-				</v-list>
-
-				<v-divider></v-divider>
-
-				<v-card-actions>
-					<v-btn
-						text
-						color="red"
-						v-if="permissionDelete"
-					>
-						Delete
-					</v-btn>
-					<v-spacer></v-spacer>
-					<v-btn
-						text
-						@click="passwordDetailsDialog.model = false;"
-					>
-						Close
-					</v-btn>
-					<v-btn
-						text
-						color="secondary"
-						v-if="permissionUpdate"
-					>
-						Edit
-					</v-btn>
-				</v-card-actions>
-			</v-card>
-		</v-dialog>
+      <template v-slot:action="{ attrs }">
+        <v-btn
+          color="secondary"
+          text
+          v-bind="attrs"
+          @click="copiedToClickboardSnackbar.model = false"
+        >
+          Ok
+        </v-btn>
+      </template>
+    </v-snackbar>
 
 	</div>
 </template>
 
 <script>
-var SURROGATE_PAIR_REGEXP = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g,
-    // Match everything outside of normal chars and " (quote character)
-    NON_ALPHANUMERIC_REGEXP = /([^#-~| |!])/g;
+
+import GenericPasswordDetailsDialog from '@/generic/GenericPasswordDetailsDialog.vue'
 
 export default {
 	name: "Board",
+	components: {
+		"GenericPasswordDetailsDialog": GenericPasswordDetailsDialog
+	},
 	data: () => ({
 
 		isAdmin: true,
@@ -334,6 +249,9 @@ export default {
 		selectedGroupMobile: -1,
 		selectedGroup: -1,
 		boardName: "SampleBoard with very very very long name",
+
+		passwordCopyInProgress: false,
+
 		boardGroups: [
 			{
 				id: -2,
@@ -355,28 +273,32 @@ export default {
 				title: "Password 1",
 				username: "User123",
 				url: null,
-				notes: "Sample notes with \na new line\nsome <b>html to spice things up</b>"
+				notes: "Sample notes with \na new line\nsome <b>html to spice things up</b>",
+				passwordLoader: false
 			},
 			{
 				id: -3,
 				title: "Password 2",
 				username: "User1234",
 				url: "https://gooooooooogle.com",
-				notes: "Sample notes with \na new line"
+				notes: "Sample notes with \na new line",
+				passwordLoader: false
 			},
 			{
 				id: -4,
 				title: "Password 3",
 				username: "User12345",
 				url: null,
-				notes: null
+				notes: null,
+				passwordLoader: false
 			},
 			{
 				id: -5,
 				title: "Password 4",
 				username: "User123456",
 				url: null,
-				notes: "Sample notes with \na new line"
+				notes: "Sample notes with \na new line",
+				passwordLoader: false
 			}
 		],
 		passwordDetailsDialog: {
@@ -396,6 +318,10 @@ export default {
 			passwordCopyTimeout: null,
 
 			notes: "My notes nalk fnalk snflksan klfnsalk fnklsanlk fnasklf nlkasn lkfnsalk fnklaswn flksa klfnasfn lksa<br />with multiple<br />lines"
+		},
+		copiedToClickboardSnackbar: {
+			model: false,
+			timeout: null
 		}
 	}),
 	mounted() {
@@ -418,27 +344,7 @@ export default {
 		}
 	},
 	methods: {
-		/**
-		* Escapes all potentially dangerous characters, so that the
-		* resulting string can be safely inserted into attribute or
-		* element text.
-		* @param value
-		* @returns {string} escaped text
-		*/
-		encodeEntities(value) {
-			return value.
-				replace(/&/g, '&amp;').
-				replace(SURROGATE_PAIR_REGEXP, function(value) {
-					var hi = value.charCodeAt(0);
-					var low = value.charCodeAt(1);
-					return '&#' + (((hi - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000) + ';';
-				}).
-				replace(NON_ALPHANUMERIC_REGEXP, function(value) {
-					return '&#' + value.charCodeAt(0) + ';';
-				}).
-				replace(/</g, '&lt;').
-				replace(/>/g, '&gt;');
-		},
+		
 
 		getSelectedGroupDesktopById(id){
 			for(let i = 0; i < this.boardGroups.length; i++){
@@ -453,89 +359,50 @@ export default {
 			this.passwordDetailsDialog.passwordId = passwordItem.id;
 			this.passwordDetailsDialog.title = passwordItem.title;
 			this.passwordDetailsDialog.url = passwordItem.url;
+			this.passwordDetailsDialog.notes = passwordItem.notes;
 
-			if(this.passwordDetailsDialog.usernameCopyTimeout != null){
-				clearTimeout(this.passwordDetailsDialog.usernameCopyTimeout);
-				this.passwordDetailsDialog.usernameCopyTimeout = null;
-			}
-			if(this.passwordDetailsDialog.passwordCopyTimeout != null){
-				clearTimeout(this.passwordDetailsDialog.passwordCopyTimeout);
-				this.passwordDetailsDialog.passwordCopyTimeout = null;
-			}
-			if(this.passwordDetailsDialog.urlCopyTimeout != null){
-				this.passwordDetailsDialog.urlCopyTimeout = null;
-			}
-			this.passwordCopyLoader = false;
-
-			if(passwordItem.notes != null){
-				var notes = passwordItem.notes;
-				notes = this.encodeEntities(notes);
-				notes = notes.replace("&#10;", "<br />");
-				this.passwordDetailsDialog.notes = notes;
-			}
-			else{
-				this.passwordDetailsDialog.notes = null;
-			}
-
-			this.passwordDetailsDialog.model = true;
+			this.$refs.GenericPasswordDetailsDialog.open();
 		},
 
 
 		//
 		// Event handlers
 		//
-		
-		// Password Dialog
-		onPasswordDialogUsernameCopyClick(){
-			if (this.passwordDetailsDialog.usernameCopyTimeout != null){
-				clearTimeout(this.passwordDetailsDialog.usernameCopyTimeout);
+		onCopiedToClickboard(){
+			var comp = this.copiedToClickboardSnackbar;
+			if(comp.timeout != null){
+				clearTimeout(comp.timeout);
+				comp.model = false;
+				comp.timeout = null;
 			}
 
-			navigator.clipboard.writeText(this.passwordDetailsDialog.username);
-			var that = this;
-			this.passwordDetailsDialog.usernameCopyTimeout = setTimeout(function(){
-				that.passwordDetailsDialog.usernameCopyTimeout = null;
-			}, 750);
+			this.$nextTick(function(){
+				comp.model = true;
+				comp.timeout = setTimeout(function(){
+					comp.model = false;
+					comp.timeout=  null;
+				}, 2000);
+			});
 		},
 
-		onPasswordDialogPasswordCopyClick(){
-			if(this.passwordDetailsDialog.passwordCopyLoader){
+		onUsernameClick(passwordItem){
+			if(passwordItem.username == null || passwordItem.username == ''){
 				return;
 			}
 
-			if (this.passwordDetailsDialog.passwordCopyTimeout != null){
-				clearTimeout(this.passwordDetailsDialog.passwordCopyTimeout);
-				this.passwordDetailsDialog.passwordCopyTimeout = null;
-			}
-
-			var requestId = (++this.passwordDetailsDialog.requestId);
-
-			this.passwordDetailsDialog.passwordCopyLoader = true;
-			// TODO: download password
-			// For now timeout to simulate
-			var that = this;
-			setTimeout(function(){
-				if(requestId == that.passwordDetailsDialog.requestId){
-					that.passwordDetailsDialog.passwordCopyLoader = false;
-					
-					navigator.clipboard.writeText("PASSWORD123!");
-					that.passwordDetailsDialog.passwordCopyTimeout = setTimeout(function(){
-						that.passwordDetailsDialog.passwordCopyTimeout = null;
-					}, 750);
-				}
-			}, 2000);			
+			navigator.clipboard.writeText(passwordItem.username);
+			this.onCopiedToClickboard();
 		},
-
-		onPasswordDialogUrlCopyClick(){
-			if (this.passwordDetailsDialog.urlCopyTimeout != null){
-				clearTimeout(this.passwordDetailsDialog.urlCopyTimeout);
+		onUrlClick(passwordItem){
+			if(passwordItem.url == null || passwordItem.url == ''){
+				return;
 			}
 
-			navigator.clipboard.writeText(this.passwordDetailsDialog.url);
-			var that = this;
-			this.passwordDetailsDialog.urlCopyTimeout = setTimeout(function(){
-				that.passwordDetailsDialog.urlCopyTimeout = null;
-			}, 750);
+			navigator.clipboard.writeText(passwordItem.url);
+			this.onCopiedToClickboard();
+		},
+		onPasswordClick(passwordItem){
+			console.log(passwordItem);
 		}
 	}
 }
@@ -683,10 +550,5 @@ export default {
 	.board-container-desktop .v-list {
 		background: none;
 		background-color: none;
-	}
-
-	.board-details-dialog__notes {
-		white-space: normal;
-		text-overflow: unset;
 	}
 </style>
