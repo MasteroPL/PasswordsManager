@@ -99,6 +99,7 @@
 						<v-spacer></v-spacer>
 						<v-btn
 							color="primary"
+							@click="onUserAddClick()"
 						>
 							Add user
 							<v-icon
@@ -122,18 +123,22 @@
 									<v-list-item-subtitle v-html="item.subtitle2"></v-list-item-subtitle>
 								</v-list-item-content>
 
-								<v-list-item-action>
+								<v-list-item-action
+									v-if="!item.admin || permissionOwner"
+								>
 									<v-btn
 										icon
 										color="secondary"
+										@click="onUserEditClick(item)"
 									>
 										<v-icon>mdi-pencil</v-icon>
 									</v-btn>
 								</v-list-item-action>
-								<v-list-item-action style="margin-left: 0">
+								<v-list-item-action style="margin-left: 0" v-if="!item.admin || permissionOwner">
 									<v-btn
 										icon
 										color="red"
+										@click="onUserRemoveClick(item)"
 									>
 										<v-icon>mdi-delete</v-icon>
 									</v-btn>
@@ -149,13 +154,41 @@
 				</div>
 			</v-tab-item>
 		</v-tabs-items>
+
+		<GenericRemoveBoardUserDialog
+			ref="GenericRemoveBoardUserDialog"
+			:userId="users.removeDialog.userId"
+			:boardId="parseInt($route.params.board_id)"
+			:userDisplayName="users.removeDialog.userDisplayName"
+		></GenericRemoveBoardUserDialog>
+
+		<GenericEditBoardUserDialog
+			ref="GenericEditBoardUserDialog"
+			:userId="users.editDialog.userId"
+			:boardId="parseInt($route.params.board_id)"
+
+			:canAddAdministrators="permissionOwner"
+			:administrator="users.editDialog.administrator"
+			:permissionCreate="users.editDialog.create"
+			:permissionRead="users.editDialog.read"
+			:permissionUpdate="users.editDialog.update"
+			:permissionDelete="users.editDialog.delete"
+		></GenericEditBoardUserDialog>
 	</div>
 </template>
 
 <script>
-	
+import GenericRemoveBoardUserDialog from "@/generic/GenericRemoveBoardUserDialog.vue"
+import GenericEditBoardUserDialog from "@/generic/GenericEditBoardUserDialog.vue"
+
 export default {
 	name: "BoardAdmin",
+
+	components: {
+		"GenericRemoveBoardUserDialog": GenericRemoveBoardUserDialog,
+		"GenericEditBoardUserDialog": GenericEditBoardUserDialog
+	},
+
 	data: () => ({
 		tabsModel: null,
 
@@ -195,6 +228,19 @@ export default {
 			}
 		},
 		users: {
+			removeDialog: {
+				userId: -2,
+				userDisplayName: "andrzej.kowalski (Kowalski Andrzej)" 
+			},
+			editDialog: {
+				userId: null,
+				administrator: false,
+				create: false,
+				read: false,
+				update: false,
+				delete: false
+			},
+
 			displayItems: [
 				{
 					id: -2,
@@ -224,6 +270,8 @@ export default {
 	beforeMount(){
 		
 	},
+	mounted(){
+	},
 	methods: {
 		
 		/**
@@ -235,7 +283,47 @@ export default {
 			this.details.boardOwner.current = this.details.boardOwner.initial.id;
 
 			this.details.anyChanges = false;
-		}
+		},
+
+
+		/**
+		* Event handlers - USERS
+		*/
+		onUserRemoveClick(item){
+			this.users.removeDialog.userId = item.id;
+			this.users.removeDialog.userDisplayName = `${item.name} (${item.subtitle1})`;
+			this.$refs.GenericRemoveBoardUserDialog.open();
+		},
+
+		onUserAddClick(){
+			this.users.editDialog.userId = null;
+			this.users.editDialog.administrator = false;
+			this.users.editDialog.create = false;
+			this.users.editDialog.read = true;
+			this.users.editDialog.update = false;
+			this.users.editDialog.delete = false;
+
+			this.$refs.GenericEditBoardUserDialog.open();
+		},
+
+		onUserEditClick(item){
+			this.users.editDialog.userId = item.id;
+			this.users.editDialog.administrator = item.admin;
+			if(!item.admin){
+				this.users.editDialog.create = item.create;
+				this.users.editDialog.read = item.read;
+				this.users.editDialog.update = item.update;
+				this.users.editDialog.delete = item.delete;
+			}
+			else{
+				this.users.editDialog.create = true;
+				this.users.editDialog.read = true;
+				this.users.editDialog.update = true;
+				this.users.editDialog.delete = true;
+			}
+
+			this.$refs.GenericEditBoardUserDialog.open();
+		},
 	}
 }
 </script>
