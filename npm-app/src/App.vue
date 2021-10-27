@@ -16,6 +16,25 @@
       <v-app-bar-nav-icon @click="mainNavigation.model = true"></v-app-bar-nav-icon>
 
       <v-toolbar-title>PassManager</v-toolbar-title>
+
+      <template v-slot:extension
+        v-if="tabs.show"
+      >
+        <v-tabs
+          v-model="tabs.model"
+          color="white"
+          centered
+          grow
+        >
+          <v-tabs-slider></v-tabs-slider>
+          <v-tab
+            v-for="item in tabs.items"
+            :key="item.key"
+          >
+            {{ item.name }}
+          </v-tab>
+        </v-tabs>
+      </template>
     </v-app-bar>
 
     <!--
@@ -136,6 +155,7 @@
         <router-view
           :userData="userData"
           @authorization-data-received="handleAuthorizationData"
+          @set-tabs="handleSetTabs"
         ></router-view>
       </v-main>
     </div>
@@ -167,6 +187,12 @@ export default {
       model: false,
       selected: null,
       boardsOpen: false,
+    },
+
+    tabs: {
+      model: null,
+      show: false,
+      items: null
     },
 
     // Modes:
@@ -242,6 +268,7 @@ export default {
     },
     handleRedirect(){
       var path = this.$route.path;
+      this.tabs.show = false;
 
       if(!ALLOW_UNAUTHORIZED.includes(path) && this.userData == null){
         this.$router.push("/login/");
@@ -254,6 +281,23 @@ export default {
         this.appDisplay = "DEFAULT";
         this.markNavigationPage();
         this.mainNavigation.model = false;
+      }
+    },
+    handleSetTabs(tabsList, initial){
+      if(typeof(tabsList) === 'undefined' || tabsList == null){
+        this.tabs.show = false;
+        this.tabs.items = null;
+        return;
+      }
+
+      this.tabs.show = true;
+      this.tabs.items = tabsList;
+      
+      if(typeof(initial) === 'undefined' || initial == null){
+        this.tabs.model = this.tabs.items[0].key;
+      }
+      else{
+        this.tabs.model = initial;
       }
     },
     markNavigationPage(){
