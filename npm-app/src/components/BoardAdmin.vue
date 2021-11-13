@@ -331,7 +331,8 @@ export default {
 <style scoped>
 .board-admin {
 	max-width: 1024px;
-	margin: 0 auto;
+	padding-left: 8px;
+	padding-right: 8px;
 }
 
 .v-tabs-items {

@@ -1,18 +1,22 @@
 import VueRouter from 'vue-router'
 import Dev from './components/Dev.vue'
+import BoardsList from './components/BoardsList.vue'
 import PasswordsList from './components/PasswordsList.vue'
 import Login from './components/Login.vue'
 import Board from './components/Board.vue'
 import BoardAdmin from './components/BoardAdmin.vue'
+import BoardGroupsEdit from './components/BoardGroupsEdit.vue'
 
 const router = new VueRouter({
     routes: [
         {path: '/dev/', component: Dev},
         {path: '/', component: Login },
+        {path: '/boards/', component: BoardsList},
         {path: '/passwords/', component: PasswordsList},
         {path: '/login/', component: Login},
         {path: '/board/:board_id/', component: Board},
-        {path: '/board/:board_id/admin/', component: BoardAdmin}
+        {path: '/board/:board_id/admin/', component: BoardAdmin},
+        {path: '/board/:board_id/groups/', component: BoardGroupsEdit}
     ]
 });
 
