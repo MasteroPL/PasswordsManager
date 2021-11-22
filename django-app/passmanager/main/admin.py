@@ -1,7 +1,10 @@
 from django.contrib import admin
 from main.models import (
 	Password,
-	UserPasswordAssignment
+	UserPasswordAssignment,
+	Board,
+	BoardUserAssignment,
+	BoardTab
 )
 
 # Register your models here.
@@ -15,3 +18,97 @@ class UserPasswordAssignmentAdmin(admin.ModelAdmin):
 	list_display = ('id', 'user', 'password', "read", "share", "update", "owner")
 
 admin.site.register(UserPasswordAssignment, UserPasswordAssignmentAdmin)
+
+
+class BoardAdmin(admin.ModelAdmin):
+	list_display = (
+		"id",
+		"name",
+		"owner",
+		"updated_at",
+		"updated_by",
+		"created_at",
+		"created_by"
+	)
+
+	search_fields = (
+		"owner__username",
+		"name"
+	)
+
+	list_display_links = (
+		"id",
+		"name"
+	)
+
+	exclude = (
+		"created_at",
+		"created_by",
+		"updated_at",
+		"updated_by"
+	)
+
+admin.site.register(Board, BoardAdmin)
+
+
+class BoardUserAssignmentAdmin(admin.ModelAdmin):
+	list_display = (
+		"id",
+		"board",
+		"user",
+		"perm_admin",
+		"perm_create",
+		"perm_read",
+		"perm_update",
+		"perm_delete",
+		"updated_at",
+		"updated_by",
+		"created_at",
+		"created_by"
+	)
+
+	search_fields = (
+		"user__username",
+		"board__name"
+	)
+
+	list_display_links = (
+		"id",
+	)
+
+	exclude = (
+		"created_at",
+		"created_by",
+		"updated_at",
+		"updated_by"
+	)
+
+admin.site.register(BoardUserAssignment, BoardUserAssignmentAdmin)
+
+
+class BoardTabAdmin(admin.ModelAdmin):
+	list_display = (
+		'id',
+		'name',
+		'board',
+		'board_order',
+		'is_default'
+	)
+
+	search_fields = (
+		'name',
+		'board__name',
+	)
+
+	list_display_links = (
+		'id', 'name'
+	)
+
+	exclude = (
+		"created_at",
+		"created_by",
+		"updated_at",
+		"updated_by"
+	)
+
+admin.site.register(BoardTab, BoardTabAdmin)

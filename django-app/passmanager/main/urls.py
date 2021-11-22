@@ -11,6 +11,7 @@ from main.api.passwords import (
     EditPasswordAPI,
     ChangePasswordOwnerAPI
 )
+from main.api.v1.urls import urlpatterns as api_v1_urls
 
 urlpatterns = [
     path('api/passwords/', UserPasswordsListAPI.as_view(), name='api_passwords_list'),
@@ -22,4 +23,6 @@ urlpatterns = [
     re_path(r'^api/password/(?P<password_code>([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}))/delete/', DeletePasswordAPI.as_view(), name='api_password_delete'),
     re_path(r'^api/password/(?P<password_code>([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}))/deassign-me/', RemoveMyPasswordAssignmentAPI.as_view(), name='api_password_deassign_me'),
     re_path(r'^api/password/(?P<password_code>([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}))/assignment/(?P<user_id>\d+)/', UserPasswordAssignmentAPI.as_view(), name='api_password_assignment_edit'),
+
+    *api_v1_urls
 ]

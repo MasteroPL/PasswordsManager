@@ -8,6 +8,21 @@ import os
 import uuid
 from django.conf import settings
 from shutil import copyfile
+from .generic_models import GenericPassword
+from .abstract_models import AuditModel
+
+
+class UserPassword(AuditModel):
+
+	id = models.OneToOneField(GenericPassword, on_delete=models.CASCADE, primary_key=True, null=False, blank=False, verbose_name=_("Generic_password_id"), related_name="user_password")
+	user = models.ForeignKey(User, on_delete=models.CASCADE, null=False, blank=False, verbose_name=_("User"))
+
+
+
+
+#
+# LEGACY
+#
 
 class Password(models.Model):
 	TARGET_DIRECTORY = os.path.join("protected", "passwords")
