@@ -1,99 +1,260 @@
 <template>
-	<div class="BoardsList">
-		<h2>Boards</h2>
+	<div class="BoardsList" style="display: flex; flex-direction: column;">
+		<h2 style="margin-top: 8px">Boards</h2>
 		<v-divider style="margin-top: 8px"></v-divider>
 
-		<div class="BoardsList__boards">
-			<v-card
-				class="BoardList__boards-card"
-				outlined
-				v-for="item in boards"
-				:key="item.id"
+		<template v-if="state == STATES.DEFAULT">
+			<div class="BoardsList__boards">
+				<v-card
+					class="BoardList__boards-card"
+					outlined
+					v-for="item in boards"
+					:key="item.id"
 
-				@mouseover="item.hover = true"
-				@mouseleave="item.hover = false"
-				@click="console.log('OK')"
-			>
-				<v-card-text
-
+					@mouseover="item.hover = true"
+					@mouseleave="item.hover = false"
+					@click="onBoardCardClick(item)"
 				>
-					<p class="text-h6 text--primary BoardsList__boards-card__title">
-						{{ item.name }}
-					</p>
-					<div class="BoardsList__boards-card__description">
-						{{ item.description }}
-					</div>
-				</v-card-text>
+					<v-icon
+						v-if="item.isOwner"
+						class="BoardList__board-owner-icon"
+					>mdi-crown-circle</v-icon>
 
-				<v-expand-transition
-
-				>
-					<v-card
-						:elevation="0"
-						v-if="item.hover"
-						class="transition-fast-in-fast-out v-card--reveal"
-						style="height: 100%"
+					<v-menu
+						left
 					>
-						<div class="BoardsList__boards-card__click-to-open">
-							Click to go to the board
+						<template v-slot:activator="{ on, attrs }">
+							<v-btn
+								class="BoardList__boards-action"
+								icon
+								v-on:click.stop
+								v-bind="attrs"
+								v-on="on"
+							>
+								<v-icon>mdi-dots-vertical</v-icon>
+							</v-btn>
+						</template>
+
+						<v-list>
+							<v-list-item v-if="false"
+								@click="onUnhideClick(item)"
+							>
+								<v-list-item-title>Unhide board</v-list-item-title>
+								<v-list-item-icon>
+									<v-icon>mdi-eye</v-icon>
+								</v-list-item-icon>
+							</v-list-item>
+							<v-list-item v-else
+								@click="onHideClick(item)"
+							>
+								<v-list-item-title>Hide board</v-list-item-title>
+								<v-list-item-icon>
+									<v-icon>mdi-eye-off</v-icon>
+								</v-list-item-icon>
+							</v-list-item>
+							<v-list-item v-if="!item.isOwner"
+								@click="onLeaveClick(item)"
+							>
+								<v-list-item-title>Leave board</v-list-item-title>
+								<v-list-item-icon>
+									<v-icon>mdi-exit-to-app</v-icon>
+								</v-list-item-icon>
+							</v-list-item>
+							<v-list-item v-else
+								@click="onDeleteClick(item)"
+							>
+								<v-list-item-title style="color:red">Delete board</v-list-item-title>
+								<v-list-item-icon>
+									<v-icon style='color:red'>mdi-delete</v-icon>
+								</v-list-item-icon>
+							</v-list-item>
+						</v-list>
+					</v-menu>
+				
+					<v-card-text
+
+					>
+						<p 
+							style="padding-right: 24px; overflow: hidden; text-overflow: ellipsis;"
+							class="text-h6 text--primary BoardsList__boards-card__title"
+						>
+							{{ item.name }}
+						</p>
+						<div class="BoardsList__boards-card__description">
+							<template v-if="item.description != null">
+								{{ item.description }}
+							</template>
+							<template v-else>
+								No description
+							</template>
 						</div>
-					</v-card>
-				</v-expand-transition>
-			</v-card>
-		</div>
+					</v-card-text>
+
+					<v-expand-transition
+
+					>
+						<v-card
+							:elevation="0"
+							v-if="item.hover"
+							class="transition-fast-in-fast-out v-card--reveal"
+							style="height: 100%"
+						>
+							<div class="BoardsList__boards-card__click-to-open">
+								Click to go to the board
+							</div>
+						</v-card>
+					</v-expand-transition>
+				</v-card>
+			</div>
+
+			<v-btn
+				color="secondary"
+				dark
+				fab
+				large
+				class="BoardList__add-board-button"
+				@click="onBoardAddClick()"
+			>
+				<v-icon>mdi-plus</v-icon>
+			</v-btn>
+		</template>
+
+		<v-container style="flex: 1 1 auto;"
+			v-if="state == STATES.LOADING"
+		>
+			<div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center">
+				<v-progress-circular
+					style="width: 100%; text-align:center;"
+					:size="64"
+					color="primary"
+					indeterminate
+				></v-progress-circular>
+			</div>
+		</v-container>
 	</div>
 </template>
 
 <script>
+const NO_CACHE = true;
+const STATES = {
+	INITIAL: 0, // before loading data
+	DEFAULT: 1, // after loading data
+	LOADING: 2 // during loading data
+};
+
+import ERRORS from '@/consts/standardErrors.js'
+
 export default {
 	name: "BoardsList",
 
 	data: () => ({
+		state: STATES.INITIAL,
+		getDataTimeout: null,
 		boards: [
-			{
-				id: 1,
-				name: "Board 1",
-				description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ante erat, vehicula eget fermentum at, tempus eu diam. Nam vehicula ligula mi, vitae mollis lorem blandit vitae.\n\nQuisque leo ligula, faucibus nec ligula tristique, efficitur dictum nisl. Etiam sit amet enim orci. Suspendisse nunc elit, posuere ac gravida id, volutpat at lectus. Nam tincidunt mauris quis lorem porta feugiat. Phasellus suscipit purus vel libero ultricies lacinia. Cras semper justo quis sapien pretium, sed efficitur elit lobortis. Quisque porta accumsan orci, sit amet volutpat ipsum.\n\nDonec fermentum bibendum magna, id consequat magna porttitor sit amet. Integer sodales odio ut justo lacinia, vitae cursus sapien ullamcorper. Lorem ipsum dolor sit amet, consectetur adipiscing elit. In sodales est ut odio pellentesque dictum. Aliquam ultricies arcu nisl, gravida euismod mauris molestie non. Fusce est nisl, congue in velit vel, lacinia suscipit neque. ",
-				hover: false
-			},
-			{
-				id: 2,
-				name: "Board 2",
-				description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ante erat, vehicula eget fermentum at, tempus eu diam. Nam vehicula ligula mi, vitae mollis lorem blandit vitae.\n\nQuisque leo ligula, faucibus nec ligula tristique, efficitur dictum nisl. Etiam sit amet enim orci. Suspendisse nunc elit, posuere ac gravida id, volutpat at lectus. Nam tincidunt mauris quis lorem porta feugiat. Phasellus suscipit purus vel libero ultricies lacinia. Cras semper justo quis sapien pretium, sed efficitur elit lobortis. Quisque porta accumsan orci, sit amet volutpat ipsum.\n\nDonec fermentum bibendum magna, id consequat magna porttitor sit amet. Integer sodales odio ut justo lacinia, vitae cursus sapien ullamcorper. Lorem ipsum dolor sit amet, consectetur adipiscing elit. In sodales est ut odio pellentesque dictum. Aliquam ultricies arcu nisl, gravida euismod mauris molestie non. Fusce est nisl, congue in velit vel, lacinia suscipit neque. ",
-				hover: false
-			},
-			{
-				id: 3,
-				name: "Board 3",
-				description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ante erat, vehicula eget fermentum at, tempus eu diam. Nam vehicula ligula mi, vitae mollis lorem blandit vitae.\n\nQuisque leo ligula, faucibus nec ligula tristique, efficitur dictum nisl. Etiam sit amet enim orci. Suspendisse nunc elit, posuere ac gravida id, volutpat at lectus. Nam tincidunt mauris quis lorem porta feugiat. Phasellus suscipit purus vel libero ultricies lacinia. Cras semper justo quis sapien pretium, sed efficitur elit lobortis. Quisque porta accumsan orci, sit amet volutpat ipsum.\n\nDonec fermentum bibendum magna, id consequat magna porttitor sit amet. Integer sodales odio ut justo lacinia, vitae cursus sapien ullamcorper. Lorem ipsum dolor sit amet, consectetur adipiscing elit. In sodales est ut odio pellentesque dictum. Aliquam ultricies arcu nisl, gravida euismod mauris molestie non. Fusce est nisl, congue in velit vel, lacinia suscipit neque. ",
-				hover: false
-			},
-			{
-				id: 4,
-				name: "Board 4",
-				description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ante erat, vehicula eget fermentum at, tempus eu diam. Nam vehicula ligula mi, vitae mollis lorem blandit vitae.\n\nQuisque leo ligula, faucibus nec ligula tristique, efficitur dictum nisl. Etiam sit amet enim orci. Suspendisse nunc elit, posuere ac gravida id, volutpat at lectus. Nam tincidunt mauris quis lorem porta feugiat. Phasellus suscipit purus vel libero ultricies lacinia. Cras semper justo quis sapien pretium, sed efficitur elit lobortis. Quisque porta accumsan orci, sit amet volutpat ipsum.\n\nDonec fermentum bibendum magna, id consequat magna porttitor sit amet. Integer sodales odio ut justo lacinia, vitae cursus sapien ullamcorper. Lorem ipsum dolor sit amet, consectetur adipiscing elit. In sodales est ut odio pellentesque dictum. Aliquam ultricies arcu nisl, gravida euismod mauris molestie non. Fusce est nisl, congue in velit vel, lacinia suscipit neque. ",
-				hover: false
-			},
-			{
-				id: 5,
-				name: "Board 5",
-				description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ante erat, vehicula eget fermentum at, tempus eu diam. Nam vehicula ligula mi, vitae mollis lorem blandit vitae.\n\nQuisque leo ligula, faucibus nec ligula tristique, efficitur dictum nisl. Etiam sit amet enim orci. Suspendisse nunc elit, posuere ac gravida id, volutpat at lectus. Nam tincidunt mauris quis lorem porta feugiat. Phasellus suscipit purus vel libero ultricies lacinia. Cras semper justo quis sapien pretium, sed efficitur elit lobortis. Quisque porta accumsan orci, sit amet volutpat ipsum.\n\nDonec fermentum bibendum magna, id consequat magna porttitor sit amet. Integer sodales odio ut justo lacinia, vitae cursus sapien ullamcorper. Lorem ipsum dolor sit amet, consectetur adipiscing elit. In sodales est ut odio pellentesque dictum. Aliquam ultricies arcu nisl, gravida euismod mauris molestie non. Fusce est nisl, congue in velit vel, lacinia suscipit neque. ",
-				hover: false
-			},
-			{
-				id: 6,
-				name: "Board 6",
-				description: "Short description",
-				hover: false
-			}
+			// {
+			// 	id: {Number},
+			// 	name: {String},
+			// 	description: {String},
+			// 	hover: {Boolean}
+			// },
 		]
 	}),
 
-	mounted() {
+	computed: {
+		STATES() {
+			return STATES;
+		}
+	},
 
+	async mounted() {
+		await this.getData();
 	},
 	methods: {
+		onHideClick(item){
+			console.log(item);
+		},
+		onUnhideClick(item){
+			console.log(item);
+		},
+		onLeaveClick(item){
+			console.log(item);
+		},
+		onDeleteClick(item){
+			console.log(item);
+		},
+		onBoardAddClick(){
+			this.$router.push("/boards/new/");
+		},
 
+		adaptStoreData(){
+			let storeData = this.$store.getters["boardsList/getBoardsSortedByName"];
+			this.boards.splice(0, this.boards.length);
+			let item = null;
+
+			if(storeData != null){
+				for(let i = 0; i < storeData.length; i++){
+					item = storeData[i];
+					this.boards.push({
+						...item,
+						hover: false // internal view logic
+					});
+				}
+			}
+		},
+
+		async getData(){
+			var that = this;
+			if(this.getDataTimeout != null){
+				clearTimeout(this.getDataTimeout);
+			}
+
+			// If request take long enough, show loading spinner
+			this.getDataTimeout = setTimeout(function(){
+				that.state = STATES.LOADING;
+				that.getDataTimeout = null;
+			}, 200);
+
+			try {
+				await this.$store.dispatch("boardsList/getData", NO_CACHE);
+			} catch(error){
+				console.log(error);
+				switch(error.type){
+					case ERRORS.UNAUTHORIZED:
+						this.$router.push("/login/");
+						break;
+
+					case ERRORS.FORBIDDEN:
+						this.$router.push("/login/");
+						break;
+
+					case ERRORS.NETWORK_ERROR:
+						// TODO
+						break;
+
+					default:
+						// TODO
+						break;
+				}
+			}
+
+			this.adaptStoreData();
+
+			if(this.getDataTimeout != null){
+				clearTimeout(this.getDataTimeout);
+				this.getDataTimeout = null;
+			}
+
+			this.state = STATES.DEFAULT;
+		},
+
+		onBoardCardClick(item){
+			this.$router.push({
+				name: 'board',
+				params: {
+					board_id: item.id
+				}
+			});
+		}
 	}
 }
 </script>
@@ -102,10 +263,12 @@ export default {
 .BoardsList {
 	padding: 16px;
 	max-width: 1024px;
+	height: 100%;
 }
 
 .BoardsList__boards {
 	margin-top: 16px;
+	padding-bottom: 64px;
 }
 
 .BoardList__boards-card {
@@ -159,6 +322,33 @@ export default {
 	text-align: center;
 	font-size: 18px;
 	font-weight: bold;
+}
+
+.BoardList__boards-action {
+	z-index: 1;
+	position: absolute;
+	right: 4px;
+	top: 8px;
+}
+
+.BoardList__board-owner-icon {
+	position: absolute;
+	right: -10px;
+	top: -10px;
+	z-index: 1;
+}
+
+.BoardList__add-board-button {
+	position: fixed;
+	bottom: 16px;
+	right: calc(100% - 1264px);
+	z-index: 2;
+}
+
+@media screen and (max-width: 1296px){
+	.BoardList__add-board-button {
+		right: 16px;
+	}
 }
 
 @media screen and (max-width: 700px){

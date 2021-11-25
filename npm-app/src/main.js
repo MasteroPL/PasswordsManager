@@ -7,9 +7,11 @@ import './assets/css/styles.scss'
 import Vuetify from 'vuetify/lib'
 import VueRouter from 'vue-router'
 import router from './router'
+import store from './store/index.js'
 
 Vue.use(Vuetify);
 Vue.use(VueRouter);
+
 
 //
 // Custom components section
@@ -84,6 +86,7 @@ Vue.config.productionTip = false
 new Vue({
   vuetify,
   router,
+  store,
   render: h => h(App)
 }).$mount('#app')
 

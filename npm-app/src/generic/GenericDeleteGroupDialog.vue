@@ -65,7 +65,7 @@
 				Are you sure?
 			</v-card-title>
 
-				<v-divider></v-divider>
+			<v-divider></v-divider>
 
 			<v-card-text style="padding-top: 20px">
 			<p>Are you sure you want to delete the group <b>{{ this.groupName }}</b><span v-if="deletePasswords"> and all of its passwords</span>?</p>

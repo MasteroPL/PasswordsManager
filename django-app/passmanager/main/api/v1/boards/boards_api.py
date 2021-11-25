@@ -1,3 +1,4 @@
+from django.db.models.expressions import Case, Value, When
 from django.db.models.query_utils import Q
 from django.http.response import Http404
 from main.models import Board
@@ -51,7 +52,7 @@ class BoardsAPI(GenericAPIView):
         qs = Board.objects.filter(
             Q(owner=self.request.user)
             |Q(user_assignments__user=self.request.user)
-        ).distinct()
+        ).distinct().order_by("id")
 
         return qs
 
@@ -69,7 +70,12 @@ class BoardsAPI(GenericAPIView):
         serializer = BoardsAPIGetRequestSerializer(data=request.query_params)
 
         if serializer.is_valid():
-            qs = self.get_queryset()
+            qs = self.get_queryset().annotate(
+                is_owner=Case(
+                    When(owner_id=request.user.id, then=Value(True)),
+                    default=Value(False)
+                )
+            )
             qs = self.filter_queryset(qs, serializer)
             total_pages = 1
 

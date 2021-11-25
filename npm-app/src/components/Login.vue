@@ -112,6 +112,11 @@
               username: response.payload.username,
               isActive: response.payload.is_active
             };
+            this.$store.commit({
+              type: 'setTokens',
+              accessToken: response.access,
+              refreshToken: response.refresh
+            });
             that.$emit('authorization-data-received', {
               userData: userData,
               accessToken: response.access,

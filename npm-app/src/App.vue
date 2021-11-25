@@ -106,6 +106,7 @@
           <v-list-item
             link
             style="margin-bottom:10px"
+            @click="navigateTo('/boards/')"
           >
             <v-list-item-icon>
               <v-icon>mdi-view-dashboard</v-icon>
@@ -149,16 +150,16 @@
       </v-list>
     </v-navigation-drawer>
 
-    <div id="scrolling">
-      <v-main class="main">
-        <input type="checkbox" v-model="darkMode" />
+    <v-container fluid class="fill-height" id="scrolling" style="padding: 0">
+      <v-main class="main" style="height:100%">
+        <!--<input type="checkbox" v-model="darkMode" />-->
         <router-view
           :userData="userData"
           @authorization-data-received="handleAuthorizationData"
           @set-tabs="handleSetTabs"
         ></router-view>
       </v-main>
-    </div>
+    </v-container>
   </v-app>
 </template>
 
@@ -331,7 +332,6 @@ export default {
     },
     handleAuthorizationData(authorizationData){
       console.log(authorizationData);
-      axios.defaults.headers.common['Authorization'] = "Bearer " + authorizationData.accessToken;
       localStorage.setItem('jwt_access', authorizationData.accessToken);
       localStorage.setItem('jwt_refresh', authorizationData.refreshToken);
       localStorage.setItem('user', JSON.stringify(authorizationData.userData));

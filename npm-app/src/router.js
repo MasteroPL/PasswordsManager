@@ -1,6 +1,7 @@
 import VueRouter from 'vue-router'
 import Dev from './components/Dev.vue'
 import BoardsList from './components/BoardsList.vue'
+import BoardAdd from './components/BoardAdd.vue'
 import PasswordsList from './components/PasswordsList.vue'
 import Login from './components/Login.vue'
 import Board from './components/Board.vue'
@@ -10,13 +11,14 @@ import BoardGroupsEdit from './components/BoardGroupsEdit.vue'
 const router = new VueRouter({
     routes: [
         {path: '/dev/', component: Dev},
-        {path: '/', component: Login },
-        {path: '/boards/', component: BoardsList},
+        {path: '/', component: Login, name:"default" },
+        {path: '/boards/', component: BoardsList, name:"boards"},
+        {path: '/boards/new/', component: BoardAdd, name:"boards_new"},
         {path: '/passwords/', component: PasswordsList},
-        {path: '/login/', component: Login},
-        {path: '/board/:board_id/', component: Board},
-        {path: '/board/:board_id/admin/', component: BoardAdmin},
-        {path: '/board/:board_id/groups/', component: BoardGroupsEdit}
+        {path: '/login/', component: Login, name:"login"},
+        {path: '/board/:board_id/', component: Board, name:"board"},
+        {path: '/board/:board_id/admin/', component: BoardAdmin, name:"board_admin"},
+        {path: '/board/:board_id/tabs/', component: BoardGroupsEdit, name:"board_tabs"}
     ]
 });
 
