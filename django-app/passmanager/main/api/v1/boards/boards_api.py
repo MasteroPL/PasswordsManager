@@ -74,6 +74,13 @@ class BoardsAPI(GenericAPIView):
                 is_owner=Case(
                     When(owner_id=request.user.id, then=Value(True)),
                     default=Value(False)
+                ),
+                # This one is modified later, to avoid too complex queries
+                # By default, if user is the owner, they are also an admin
+                # (Also Django really doesn't work too well with queries that are too complex)
+                is_admin=Case(
+                    When(owner_id=request.user.id, then=Value(True)),
+                    default=Value(False)
                 )
             )
             qs = self.filter_queryset(qs, serializer)
@@ -84,11 +91,34 @@ class BoardsAPI(GenericAPIView):
                 page = serializer.validated_data["page"]
 
                 if page > p.num_pages:
-                    qs = []
+                    qs = Board.objects.none()
                 else:
                     qs = p.page(page)
 
                 total_pages = p.num_pages
+
+            ids = qs.values_list('id', flat=True)
+            is_admin_qs = BoardUserAssignment.objects.filter(
+                board_id__in=ids,
+                user_id=request.user.id,
+                perm_admin=True
+            ).order_by('board_id')
+
+            board_index = 0
+            board_id = None
+            
+            qs = list(qs) # Fetching everything from DB at this line
+            for item in is_admin_qs:
+                board_id = qs[board_index].id
+
+                while(item.board_id > board_id):
+                    board_index += 1
+                    board_id = qs[board_index].id
+                    
+                # If anyhow duplicates appear, they will be omitted by this if
+                if item.board_id == board_id:
+                    setattr(qs[board_index], "is_admin", True)
+                    board_index += 1
 
             response = BoardsAPIGetResponseSerializer(instance={
                 "per_page": serializer.validated_data["per_page"],
@@ -615,6 +645,39 @@ class BoardAssignmentAPI(GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+
+class BoardLeaveAPI(GenericAPIView):
+
+    def get_queryset(self, board_id:int):
+        qs = Board.objects.filter(
+            Q(owner=self.request.user)
+            |Q(user_assignments__user=self.request.user),
+            id=board_id
+        ).distinct()
+
+        return qs
+
+    def delete(self, request, board_id:int, format=None):
+
+        qs = self.get_queryset(board_id)
+        exists = qs.exists()
+        obj = qs[0]
+
+        if not exists:
+            raise Http404()
+
+        if obj.owner_id == request.user.id:
+            return Response(data={
+                "detail": "You cannot leave a board you are the owner of. Either change the boards owner or delete the board entirely.",
+                "code": "is_owner"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        BoardUserAssignment.objects.filter(
+            board_id=board_id,
+            user_id=request.user.id
+        ).delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 #

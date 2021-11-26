@@ -4,7 +4,7 @@
 		<v-divider style="margin-top: 8px"></v-divider>
 
 		<template v-if="state == STATES.DEFAULT">
-			<div class="BoardsList__boards">
+			<div class="BoardsList__boards" v-if="boards.length > 0">
 				<v-card
 					class="BoardList__boards-card"
 					outlined
@@ -107,6 +107,20 @@
 				</v-card>
 			</div>
 
+			<div 
+				style="flex: 1 1 auto;"
+				v-else
+			>
+				<div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center">
+					<div style="text-align: center;">
+						<v-icon style="font-size: 64px; margin-bottom: 16px;">mdi-view-dashboard</v-icon>
+
+						<h3>No boards found</h3>
+						<p>You are not assigned to any boards</p>
+					</div>
+				</div>
+			</div>
+
 			<v-btn
 				color="secondary"
 				dark
@@ -131,6 +145,23 @@
 				></v-progress-circular>
 			</div>
 		</v-container>
+
+
+		<GenericDeleteBoardDialog
+			ref="GenericDeleteBoardDialog"
+			:boardId="deleteBoardDialog.boardId"
+			:boardName="deleteBoardDialog.boardName"
+
+			@deleted="onDeleted()"
+		></GenericDeleteBoardDialog>
+
+		<GenericLeaveBoardDialog
+			ref="GenericLeaveBoardDialog"
+			:boardId="leaveBoardDialog.boardId"
+			:boardName="leaveBoardDialog.boardName"
+
+			@left="onLeft()"
+		></GenericLeaveBoardDialog>
 	</div>
 </template>
 
@@ -143,9 +174,16 @@ const STATES = {
 };
 
 import ERRORS from '@/consts/standardErrors.js'
+import GenericDeleteBoardDialog from '@/generic/GenericDeleteBoardDialog.vue'
+import GenericLeaveBoardDialog from '@/generic/GenericLeaveBoardDialog.vue'
 
 export default {
 	name: "BoardsList",
+
+	components: {
+		"GenericDeleteBoardDialog": GenericDeleteBoardDialog,
+		"GenericLeaveBoardDialog": GenericLeaveBoardDialog
+	},
 
 	data: () => ({
 		state: STATES.INITIAL,
@@ -155,9 +193,19 @@ export default {
 			// 	id: {Number},
 			// 	name: {String},
 			// 	description: {String},
+			// 	isOwner: {Boolean},
+			// 	isAdmin: {Boolean},
 			// 	hover: {Boolean}
 			// },
-		]
+		],
+		deleteBoardDialog: {
+			boardId: -1,
+			boardName: null
+		},
+		leaveBoardDialog: {
+			boardId: -1,
+			boardName: null
+		}
 	}),
 
 	computed: {
@@ -177,13 +225,25 @@ export default {
 			console.log(item);
 		},
 		onLeaveClick(item){
-			console.log(item);
+			this.leaveBoardDialog.boardId = item.id;
+			this.leaveBoardDialog.boardName = item.name;
+
+			this.$refs.GenericLeaveBoardDialog.open();
 		},
 		onDeleteClick(item){
-			console.log(item);
+			this.deleteBoardDialog.boardId = item.id;
+			this.deleteBoardDialog.boardName = item.name;
+
+			this.$refs.GenericDeleteBoardDialog.open();
 		},
 		onBoardAddClick(){
 			this.$router.push("/boards/new/");
+		},
+		onDeleted(){
+			this.adaptStoreData();
+		},
+		onLeft(){
+			this.adaptStoreData();
 		},
 
 		adaptStoreData(){

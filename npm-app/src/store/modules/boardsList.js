@@ -5,6 +5,7 @@ import { handleStandardRequestResponses } from '@/store/index.js'
 const CACHING_TIME_IN_SECONDS = 60;
 const API_BOARDS_LIST = "api/v1/boards/";
 const API_BOARD = "api/v1/board/%%BOARD_ID%%";
+const API_BOARD_LEAVE = "api/v1/board/%%BOARD_ID%%/leave/";
 
 function adaptListResponseData(response){
 	let item;
@@ -16,7 +17,8 @@ function adaptListResponseData(response){
 			id: item.id,
 			name: item.name,
 			description: item.description,
-			isOwner: item.is_owner
+			isOwner: item.is_owner,
+			isAdmin: item.is_admin
 		});
 	}
 	return result;
@@ -146,7 +148,8 @@ export default {
 		 *      id: {Number},
 		 *      name: {String},
 		 *      description: {String},
-		 *      isOwner: {Boolean}
+		 *      isOwner: {Boolean},
+		 * 		isAdmin: {Boolean}
 		 * }, { ... }, ... ]
 		 */
 		newCache (state, payload) {
@@ -161,7 +164,8 @@ export default {
 		 * 		id: {Number},
 		 * 		name: {String},
 		 * 		description: {String},
-		 * 		isOwner: {Boolean}
+		 * 		isOwner: {Boolean},
+		 * 		isAdmin: {Boolean}
 		 * }
 		 */
 		insertBoard (state, payload) {
@@ -283,7 +287,8 @@ export default {
 				id: response.data.id,
 				name: response.data.name,
 				description: response.data.description,
-				isOwner: true
+				isOwner: true,
+				isAdmin: true
 			};
 
 			commit("insertBoard", newBoard);
@@ -329,7 +334,48 @@ export default {
 				};
 			}
 
-			commit("removeBoard", payload.id);
+			commit("removeBoard", { id: payload.id });
+		},
+
+		/**
+		 * Removes user assignment from the board (if user is not the board owner)
+		 * @param {*} param0 Provided by Vuex
+		 * @param {Object} payload Required format:
+		 * {
+		 * 		id: {Number}
+		 * }
+		 * @throws Any errors that occur
+		 */
+		async leaveBoard({commit, rootState, rootGetters}, payload){
+			if(typeof(payload.id) === 'undefined'){
+				throw {
+					type: ERRORS.VALIDATION,
+					errors: {
+						id: {
+							string: "This field is required",
+							code: "required"
+						}
+					}
+				};
+			}
+
+			let headers = rootGetters.standardRequestHeaders;
+			try{
+				await axios({
+					method: "delete",
+					url: rootState.apiUrl + API_BOARD_LEAVE.replace("%%BOARD_ID%%", payload.id),
+					headers: headers
+				});
+			} catch(error) {
+				handleStandardRequestResponses(error);
+
+				throw {
+					type: ERRORS.UNKNOWN,
+					errors: []
+				};
+			}
+
+			commit("removeBoard", { id: payload.id });
 		}
 	}
 }

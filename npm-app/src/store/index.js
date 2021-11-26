@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 import BoardsModule from './modules/boardsList';
+import BoardModule from './modules/board';
 import appConfig from '@/config.js'
 import ERRORS from '@/consts/standardErrors'
 
@@ -38,7 +39,7 @@ export const handleStandardRequestResponses = (payload) => {
             };
         case 500:
             throw {
-                type: ERRORS.INTERNAL,
+                type: ERRORS.INTERNAL_SERVER_ERROR,
                 errors: []
             }
     }
@@ -46,7 +47,8 @@ export const handleStandardRequestResponses = (payload) => {
 
 const store = new Vuex.Store({
     modules: {
-        boardsList: BoardsModule
+        boardsList: BoardsModule,
+        board: BoardModule
     },
 
     state: {

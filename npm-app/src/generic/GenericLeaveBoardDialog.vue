@@ -5,22 +5,18 @@
 	>
 		<v-card>
 			<v-card-title>
-				Delete board
+				Leave board
 			</v-card-title>
 
 			<v-divider></v-divider>
 
 			<v-card-text style="padding-top: 20px">
 				<span v-if="boardName != null">
-					Are you sure you want to delete board "<b>{{ boardName }}</b>"? This action will permanently remove all passwords associated with the board as well as the board itself.
-					<br /><br />
-					<b><u>This action cannot be undone.</u></b>
+					Are you sure you want to leave board "<b>{{ boardName }}</b>"?
 				</span>
 
 				<span v-else>
-					Are you sure you want to delete this board? This action will permanently remove all passwords associated with the board as well as the board itself.
-					<br /><br />
-					<b><u>This action cannot be undone.</u></b>
+					Are you sure you want to leave this board?
 				</span>
 			</v-card-text>
 
@@ -46,7 +42,7 @@
 					color="red"
 					@click="onSubmitClick()"
 					:disabled="disableControls"
-				>DELETE</v-btn>
+				>LEAVE</v-btn>
 			</v-card-actions>
 		</v-card>
 
@@ -91,7 +87,7 @@ const STATES = {
 };
 
 export default {
-	name: "GenericDeleteBoardDialog",
+	name: "GenericLeaveBoardDialog",
 	
 	props: {
 		boardId: {
@@ -159,7 +155,7 @@ export default {
 
 				let exception = false;
 				try {
-					await this.$store.dispatch("boardsList/deleteBoard", { id: this.boardId });
+					await this.$store.dispatch("boardsList/leaveBoard", { id: this.boardId });
 				} catch (error){
 					exception = true;
 					switch(error.type){
@@ -196,7 +192,7 @@ export default {
 				}
 
 				this.close();
-				this.$emit('deleted', boardId);
+				this.$emit('left', boardId);
 			}
 		}
 	}

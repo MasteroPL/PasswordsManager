@@ -53,6 +53,7 @@ class BoardsAPIGetResponseSerializer(serializers.Serializer):
     class _BoardsAPIGetResponseBoardSerializer(serializers.ModelSerializer):
 
         is_owner = serializers.BooleanField()
+        is_admin = serializers.BooleanField()
 
         class Meta:
             model=Board
@@ -60,7 +61,8 @@ class BoardsAPIGetResponseSerializer(serializers.Serializer):
                 "id",
                 "name",
                 "description",
-                "is_owner"
+                "is_owner",
+                "is_admin"
             )
 
     per_page = serializers.IntegerField()
