@@ -136,9 +136,9 @@
 		<v-container style="flex: 1 1 auto;"
 			v-if="state == STATES.LOADING"
 		>
-			<div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center">
+			<div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center;">
 				<v-progress-circular
-					style="width: 100%; text-align:center;"
+					style="margin: 0 auto; text-align:center;"
 					:size="64"
 					color="primary"
 					indeterminate
@@ -311,7 +311,8 @@ export default {
 			this.$router.push({
 				name: 'board',
 				params: {
-					board_id: item.id
+					board_id: item.id,
+					isAdmin: item.isAdmin
 				}
 			});
 		}

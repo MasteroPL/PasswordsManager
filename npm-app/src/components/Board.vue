@@ -1,14 +1,35 @@
 <template>
-	<div class="board-container">
+	<div class="board-container" style="padding-top: 12px; height: 100%; display: flex; flex-direction: column">
 
 		<div class="board-header"
 			:style="(isAdmin) ? 'max-width: calc(100% - 50px);' : 'max-width: calc(100% - 16px);'"
 		>
+			<v-btn
+				x-small
+				text
+				style="padding-left: 4px; margin-left: 10px; margin-bottom: 4px;"
+				@click="onBackToBoardsClick()"
+			><v-icon left style="margin-right:0">mdi-chevron-left</v-icon> Back to boards</v-btn>
+
+			<!-- DISPLAYING DATA -->
 			<div
 				class="board-header__content"
+				v-if="state==STATES.DEFAULT"
 			>
 				<h2 class="board-header__ellipsis">{{ boardName }}</h2>
-				<div class="board-header__ellipsis">Board</div>
+				<div :class='(cropDescription) ? "board-header__description" : "board-header__description no-crop"'
+					@click="onDescriptionClick()"
+					:style="boardDescriptionStyle"
+					ref="boardDescriptionDiv"
+				>
+						<template v-if="boardDescription != null">
+							<span v-html="boardDescription"></span>
+						</template>
+						<template v-else>
+							No description
+						</template>
+				</div>
+				
 
 				<div 
 					class="board-header__admin-button-container"
@@ -32,6 +53,24 @@
 					</v-tooltip>
 				</div>
 			</div>
+
+			<!-- SCREEN IS LOADING -->
+			<div
+				v-else
+			>
+				<v-skeleton-loader
+					class="board__header-skeleton-loader"
+					elevation='0'
+					type="card-heading"
+					style="margin-left: -4px; margin-top: -4px; height: 52px;"
+				></v-skeleton-loader>
+
+				<v-skeleton-loader
+					style="padding-left: 12px; padding-right: 16px;"
+					elevation='0'
+					type="text"
+				></v-skeleton-loader>
+			</div>
 		</div>
 
 		<v-btn
@@ -43,17 +82,21 @@
 			<v-icon>mdi-plus</v-icon>
 		</v-btn>
 
+		<v-divider></v-divider>
+
 		<!--
 			Desktop view
 		-->
-		<div class="board-container-desktop">
+		<div class="board-container-desktop"
+			v-if="state == STATES.DEFAULT"
+		>
 			<!-- Left side -->
 			<div class="board-desktop-left">
 				<v-list
 					rounded
 					dense 
 				>
-					<v-subheader>GROUPS</v-subheader>
+					<v-subheader>TABS</v-subheader>
 
 					<v-list-item-group
 						color="primary"
@@ -61,7 +104,7 @@
 						mandatory
 					>
 						<v-list-item
-							v-for="item in boardGroups"
+							v-for="item in boardTabs"
 							:key="item.id"
 						>
 							<v-list-item-content
@@ -105,41 +148,49 @@
 					<!--
 						List of passwords will be here
 					-->
-					<v-list-item
-						v-for="item in groupPasswords"
-						class="board-desktop-right__item"
-						:key="item.id"
-						style="padding-left: 6px; padding-top: 3px; padding-bottom: 3px;"
-					>
-						<div class="board-desktop-right__item-div clickable"
-							v-ripple
-							@click="openPasswordDetailsDialog(item)"
+					<template v-if="tabPasswords != null && tabPasswords.length > 0">
+						<v-list-item
+							v-for="item in tabPasswords"
+							class="board-desktop-right__item"
+							:key="item.id"
+							style="padding-left: 6px; padding-top: 3px; padding-bottom: 3px;"
 						>
-							{{ item.title }}
+							<div class="board-desktop-right__item-div clickable"
+								v-ripple
+								@click="openPasswordDetailsDialog(item)"
+							>
+								{{ item.title }}
+							</div>
+							<div class="board-desktop-right__item-div clickable"
+								v-ripple
+								@click="onUsernameClick(item)"
+							>
+								{{ item.username }}
+							</div>
+							<div class="board-desktop-right__item-div clickable"
+								v-ripple
+								@click="onPasswordClick(item)"
+							>
+								<span v-if="!item.passwordLoader">************</span>
+								<v-progress-linear v-else indeterminate
+									style="margin-top: 15px;"
+									color="secondary"
+								></v-progress-linear>
+							</div>
+							<div class="board-desktop-right__item-div clickable"
+								v-ripple
+								@click="onUrlClick(item)"
+							>
+								{{ item.url }}
+							</div>
+						</v-list-item>
+					</template>
+
+					<template v-else>
+						<div style="text-align: left; width: 100%; padding: 16px; opacity: 0.8;">
+							No passwords
 						</div>
-						<div class="board-desktop-right__item-div clickable"
-							v-ripple
-							@click="onUsernameClick(item)"
-						>
-							{{ item.username }}
-						</div>
-						<div class="board-desktop-right__item-div clickable"
-							v-ripple
-							@click="onPasswordClick(item)"
-						>
-							<span v-if="!item.passwordLoader">************</span>
-							<v-progress-linear v-else indeterminate
-								style="margin-top: 15px;"
-								color="secondary"
-							></v-progress-linear>
-						</div>
-						<div class="board-desktop-right__item-div clickable"
-							v-ripple
-							@click="onUrlClick(item)"
-						>
-							{{ item.url }}
-						</div>
-					</v-list-item>
+					</template>
 				</v-list>
 			</div>
 		</div>
@@ -147,10 +198,12 @@
 		<!--
 			Mobile view
 		-->
-		<div class="board-container-mobile">
+		<div class="board-container-mobile"
+			v-if="state == STATES.DEFAULT"
+		>
 			<v-select
 				v-model="selectedGroupMobile"
-				:items="boardGroups"
+				:items="boardTabs"
 				label="Displayed group"
 				item-value="id"
 				item-text="name"
@@ -176,7 +229,7 @@
 				class="board-mobile__passwords-list"
 			>
 				<v-list-item
-					v-for="item in groupPasswords"
+					v-for="item in tabPasswords"
 					:key="item.id"
 					@click="openPasswordDetailsDialog(item)"
 				>
@@ -204,9 +257,9 @@
 			:username="passwordDetailsDialog.username"
 			:url="passwordDetailsDialog.url"
 			:notes="passwordDetailsDialog.notes"
-			:permissionRead="permissionRead"
-			:permissionUpdate="permissionUpdate"
-			:permissionDelete="permissionDelete"
+			:permissionRead="board != null && board.permissions.read"
+			:permissionUpdate="board != null && board.permissions.update"
+			:permissionDelete="board != null && board.permissions.delete"
 		></GenericPasswordDetailsDialog>
 
 		<v-snackbar
@@ -226,33 +279,74 @@
       </template>
     </v-snackbar>
 
+		<!--
+			LOADING
+		-->
+		<div style="flex: 1 1 auto;"
+			v-if="state == STATES.LOADING"
+		>
+			<div style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center">
+				<v-progress-circular
+					style="text-align:center; margin: 0 auto;"
+					:size="64"
+					color="primary"
+					indeterminate
+				></v-progress-circular>
+			</div>
+		</div>
 	</div>
 </template>
 
 <script>
-
+import ERRORS from '@/consts/standardErrors'
 import GenericPasswordDetailsDialog from '@/generic/GenericPasswordDetailsDialog.vue'
+
+const STATES = {
+	INITIAL: 0,
+	DEFAULT: 1,
+	LOADING: 2
+};
 
 export default {
 	name: "Board",
+
+	props: {
+		isAdmin: {
+			required: false,
+			type: Boolean,
+			default: false
+		}
+	},
+
 	components: {
 		"GenericPasswordDetailsDialog": GenericPasswordDetailsDialog
 	},
 	data: () => ({
+		state: STATES.LOADING,
+		
+		selectedGroupDesktop: 0,
+		selectedGroupMobile: null,
+		selectedGroup: null,
+		cropDescription: true,
+		expandDescription: false, // Separate control for animation
+		cropTimeout: null,
+		boardDescriptionStyle: "cursor: pointer; max-height: 22.5px;",
+		
 
-		isAdmin: true,
-		permissionRead: true,
-		permissionUpdate: true,
-		permissionCreate: true,
-		permissionDelete: true,
-		selectedGroupDesktop: 2,
-		selectedGroupMobile: -1,
-		selectedGroup: -1,
-		boardName: "SampleBoard with very very very long name",
+		board: null, // {
+		// 	boardName: "SampleBoard with very very very long name",
+		// 	boardDescription: null,
+		// 	permissionRead: true,
+		// 	permissionUpdate: true,
+		// 	permissionCreate: true,
+		// 	permissionDelete: true,
+		// },
+
+		getDataTimeout: null,
 
 		passwordCopyInProgress: false,
 
-		boardGroups: [
+		boardTabs: [
 			{
 				id: -2,
 				name: "Group 1"
@@ -267,7 +361,7 @@ export default {
 				name: "Not grouped"
 			}
 		],
-		groupPasswords: [
+		tabPasswords: [
 			{
 				id: -2,
 				title: "Password 1",
@@ -324,7 +418,26 @@ export default {
 			timeout: null
 		}
 	}),
-	mounted() {
+	computed: {
+		STATES: () => {
+			return STATES;
+		},
+
+		boardName: function() {
+			return (this.board != null)
+				? this.board.name
+				: "";
+		},
+
+		boardDescription: function() {
+			return (this.board != null)
+				? this.board.descriptionHTML
+				: "";
+		}
+	},
+	async mounted() {
+		this.isMounted = true;
+		await this.getData();
 	},
 	watch: {
 		// Vuetify really does not want to cooperate with me,
@@ -340,15 +453,79 @@ export default {
 			this.selectedGroupDesktop = this.getSelectedGroupDesktopById(newValue);
 		},
 		selectedGroupDesktop(newValue){
-			this.selectedGroupMobile = this.boardGroups[newValue].id;
+			this.selectedGroupMobile = this.boardTabs[newValue].id;
 		}
 	},
 	methods: {
 		
+		adaptStoreData(){
+			let board = this.$store.getters["board/getBoard"];
+
+			if(board != null){
+				this.board = board;
+				this.boardTabs = board.tabs;
+				this.tabPasswords = [];
+
+				this.selectedGroup = board.tabs[0].id;
+			}
+			else{
+				this.board = null;
+				this.tabPasswords = [];
+				this.boardTabs = [];
+			}
+
+			console.log(board.tabs);
+		},
+
+		async getData(){
+			var that = this;
+			if(this.getDataTimeout != null){
+				clearTimeout(this.getDataTimeout);
+			}
+			this.getDataTimeout = setTimeout(function(){
+				that.state = STATES.LOADING;
+				that.getDataTimeout = null;
+			}, 200);
+
+			let exception = false;
+			try {
+				await this.$store.dispatch("board/getData", {
+					id: this.$route.params.board_id,
+					isAdmin: this.isAdmin
+				});
+			} catch(error){
+				exception = true;
+				switch(error.type){
+					case ERRORS.UNAUTHORIZED:
+						this.$router.push("/login/");
+						return;
+
+					case ERRORS.FORBIDDEN:
+						this.$router.push("/login/");
+						return;
+
+					default:
+						console.log(error);
+				}
+			} finally {
+				if(this.getDataTimeout != null){
+					clearTimeout(this.getDataTimeout);
+					this.getDataTimeout = null;
+				}
+
+				this.state = STATES.DEFAULT;
+			}
+
+			if(exception) {
+				return;
+			}
+
+			this.adaptStoreData();
+		},
 
 		getSelectedGroupDesktopById(id){
-			for(let i = 0; i < this.boardGroups.length; i++){
-				if (this.boardGroups[i].id == id){
+			for(let i = 0; i < this.boardTabs.length; i++){
+				if (this.boardTabs[i].id == id){
 					return i;
 				}
 			}
@@ -368,6 +545,41 @@ export default {
 		//
 		// Event handlers
 		//
+		onBackToBoardsClick(){
+			this.$router.push("/boards/");
+		},
+
+		onDescriptionClick(){
+			// This is a mess....
+			// But it works ¯\_(ツ)_/¯
+			//
+			// Also I've just spent an hour perfecting expansion of cropped board description. A functionality perhaps 1% of users will care about.
+			// Ah yes, an hour well spent
+
+			if(this.cropTimeout != null){
+				clearTimeout(this.cropTimeout);
+				this.cropTimeout = null;
+				this.cropDescription = false;
+			}
+
+			this.expandDescription = !this.expandDescription;
+
+			if(!this.expandDescription){
+				this.boardDescriptionStyle = `cursor: pointer; max-height: 22.5px`;
+				var that = this;
+				this.cropTimeout = setTimeout(function(){
+					that.cropDescription = true;
+					that.cropTimeout = null;
+				}, 200);
+			}
+			else{
+				let height = this.$refs.boardDescriptionDiv.scrollHeight;
+				this.boardDescriptionStyle = `cursor: pointer; max-height: ${height}px`;
+				this.cropDescription = false;
+				this.$forceUpdate();
+			}
+		},
+
 		onCopiedToClickboard(){
 			var comp = this.copiedToClickboardSnackbar;
 			if(comp.timeout != null){
@@ -409,9 +621,37 @@ export default {
 
 </script>
 
+<style>
+	.board__header-skeleton-loader > .v-skeleton-loader__bone {
+		background-color: rgba(0,0,0,0) !important;
+	}
+
+	.board__header-skeleton-loader {
+
+	}
+</style>
+
 <style scoped>
 	.board-header {
+		padding-bottom: 12px;
 	}
+	
+	.board-header__description {
+		display: -webkit-box;
+		-webkit-line-clamp: 1;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		max-width: 100%;
+		max-height: 22.5px;
+
+		transition: max-height 0.3s;
+	}
+	.board-header__description.no-crop {
+		-webkit-line-clamp: unset;
+		display: block;
+		-webkit-box-orient: unset;
+	}
+
 	.board-header__content {
 		padding-left: 16px;
 		padding-right: 0;
@@ -524,7 +764,7 @@ export default {
 	.board-mobile__group-edit-button{
 		position: absolute;
 		right: 4px;
-		top: 8px;
+		top: 26px;
 	}
 
 	.board-mobile__passwords-list {

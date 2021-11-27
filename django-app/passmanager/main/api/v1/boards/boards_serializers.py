@@ -127,7 +127,9 @@ class BoardAPIGetResponseSerializer(serializers.ModelSerializer):
             model=User
             fields=(
                 "id",
-                "username"
+                "username",
+                "first_name",
+                "last_name"
             )
 
     class _BoardAPIGetResponseUsersSerializer(serializers.ModelSerializer):
@@ -137,7 +139,9 @@ class BoardAPIGetResponseSerializer(serializers.ModelSerializer):
                 model=User
                 fields=(
                     "id",
-                    "username"
+                    "username",
+                    "first_name",
+                    "last_name"
                 )
 
         user = _BoardAPIGetResponseUsersUserSerializer()
@@ -168,13 +172,20 @@ class BoardAPIGetResponseSerializer(serializers.ModelSerializer):
             fields=(
                 "id",
                 "name",
-                "board_order",
                 "is_default"
             )
+
+    class _BoardAPIGetResponsePermissionsSerializer(serializers.Serializer):
+        admin = serializers.BooleanField()
+        create = serializers.BooleanField()
+        read = serializers.BooleanField()
+        update = serializers.BooleanField()
+        delete = serializers.BooleanField()
 
     owner = _BoardAPiGetResponseOwnerSerializer()
     users = serializers.SerializerMethodField()
     tabs = serializers.SerializerMethodField()
+    permissions = _BoardAPIGetResponsePermissionsSerializer()
 
     def get_users(self, obj):
         qs = obj.user_assignments
@@ -192,7 +203,8 @@ class BoardAPIGetResponseSerializer(serializers.ModelSerializer):
             "description",
             "tabs",
             "owner",
-            "users"
+            "users",
+            "permissions"
         )
 
 

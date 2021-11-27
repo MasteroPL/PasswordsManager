@@ -1,4 +1,5 @@
 from django.db.models.expressions import Case, Value, When
+from django.db.models.query import Prefetch
 from django.db.models.query_utils import Q
 from django.http.response import Http404
 from main.models import Board
@@ -215,7 +216,8 @@ class BoardAPI(GenericAPIView):
             serializer_fields = [
                 "id",
                 "name",
-                "description"
+                "description",
+                "permissions"
             ]
             data = serializer.validated_data
             admin_required = False
@@ -230,7 +232,13 @@ class BoardAPI(GenericAPIView):
                 serializer_fields.append("users")
                 admin_required=True
             if data["include_tabs"]:
-                prefetch_related_arr.append("board_tabs")
+                # Cool prefetch
+                prefetch_related_arr.append(
+                    Prefetch(
+                        "board_tabs",
+                        queryset=BoardTab.objects.order_by("board_id", "board_order")
+                    )
+                )
                 serializer_fields.append("tabs")
             
 
@@ -255,6 +263,24 @@ class BoardAPI(GenericAPIView):
                     return Response(status=status.HTTP_403_FORBIDDEN)
 
                 raise Http404()
+
+            if obj.owner_id != request.user.id:
+                assignment = BoardUserAssignment.objects.get(board_id=board_id, user_id=request.user.id)
+                setattr(obj, 'permissions', {
+                    "admin": assignment.perm_admin,
+                    "create": assignment.perm_admin or assignment.perm_create,
+                    "read": assignment.perm_admin or assignment.perm_read,
+                    "update": assignment.perm_admin or assignment.perm_update,
+                    "delete": assignment.perm_admin or assignment.perm_delete
+                })
+            else:
+                setattr(obj, 'permissions', {
+                    "admin": True,
+                    "create": True,
+                    "read": True,
+                    "update": True,
+                    "delete": True
+                })
 
             response = BoardAPIGetResponseSerializer(instance=obj, fields=serializer_fields)
 
@@ -747,7 +773,7 @@ class BoardTabsAPI(GenericAPIView):
                         }
                     })
             else:
-                builder.append_tab(data["name"])
+                builder.prepend_tab(data["name"])
             builder.save()
 
             objects = BoardTab.objects.filter(board_id=board_id).order_by("board_order")
