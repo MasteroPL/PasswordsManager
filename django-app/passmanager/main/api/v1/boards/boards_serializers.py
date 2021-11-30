@@ -210,11 +210,40 @@ class BoardAPIGetResponseSerializer(serializers.ModelSerializer):
 
 class BoardAPIPatchRequestSerializer(serializers.ModelSerializer):
 
-    owner_id = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all(),
-        allow_null=False,
-        required=False
-    )
+    def __init__(self, board_id:int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.board_id = board_id
+
+    # owner_id = serializers.PrimaryKeyRelatedField(
+    #     queryset=User.objects.all(),
+    #     allow_null=False,
+    #     required=False
+    # )
+    owner_id = serializers.IntegerField(required=False, allow_null=False)
+
+    def validate(self, data):
+        data = super().validate(data)
+
+        if data.__contains__("owner_id"):
+            tmp_qs = BoardUserAssignment.objects.filter(
+                board_id = self.board_id
+            ).values_list("user_id", flat=True)
+
+            try:
+                new_owner = User.objects.filter(
+                    pk__in=tmp_qs
+                ).get(pk=data["owner_id"])
+                data["owner"] = new_owner
+            except User.DoesNotExist:
+                raise serializers.ValidationError({
+                    "owner_id": ErrorDetail(
+                        "User not found",
+                        code="not_found"
+                    )
+                })
+
+        return data
 
     class Meta:
         model=Board
@@ -231,7 +260,9 @@ class BoardAPIPatchResponseSerializer(serializers.ModelSerializer):
             model=User
             fields=(
                 "id",
-                "username"
+                "username",
+                "first_name",
+                "last_name"
             )
 
     owner = _BoardAPIPatchResponseOwnerSerializer()

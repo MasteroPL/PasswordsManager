@@ -242,26 +242,27 @@ class BoardAPI(GenericAPIView):
                 serializer_fields.append("tabs")
             
 
-            qs_no_admin, qs_admin = self.get_queryset(admin_required=admin_required)
+            qs_no_admin, qs_admin = self.get_queryset(admin_required=True)
 
-            exists = False
+            is_admin = False
 
             try:
-                if not admin_required:
-                    qs = qs_no_admin
-                else:
-                    qs = qs_admin
-                    exists = qs_no_admin.filter(id=board_id).exists()
+                if admin_required:
+                    is_admin = qs_admin.filter(id=board_id).exists()
+                    obj = qs_no_admin.select_related(*select_related_arr) \
+                        .prefetch_related(*prefetch_related_arr) \
+                        .get(id=board_id) 
 
-                obj = qs \
-                    .select_related(*select_related_arr) \
-                    .prefetch_related(*prefetch_related_arr) \
-                    .get(id=board_id) \
+                    if not is_admin:
+                        serializer_fields.remove("owner")
+                        serializer_fields.remove("users")
+
+                else:
+                    obj = qs_no_admin.select_related(*select_related_arr) \
+                        .prefetch_related(*prefetch_related_arr) \
+                        .get(id=board_id) 
 
             except Board.DoesNotExist:
-                if exists:
-                    return Response(status=status.HTTP_403_FORBIDDEN)
-
                 raise Http404()
 
             if obj.owner_id != request.user.id:
@@ -292,7 +293,7 @@ class BoardAPI(GenericAPIView):
 
 
     def patch(self, request, board_id:int):
-        serializer = BoardAPIPatchRequestSerializer(data=request.data, partial=True)
+        serializer = BoardAPIPatchRequestSerializer(board_id, data=request.data, partial=True)
 
         qs_no_admin, qs_admin = self.get_queryset(admin_required=True)
 

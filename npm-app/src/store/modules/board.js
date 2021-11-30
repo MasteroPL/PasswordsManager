@@ -11,7 +11,6 @@ function adaptBoardResponseData(response){
         board: null,
         admin: null
     };
-    console.log(response.description);
     let descHTML = null;
     if(response.description != null){
         descHTML = encodeEntities(response.description);
@@ -43,7 +42,7 @@ function adaptBoardResponseData(response){
         result.board.tabs.push(tab);
     }
 
-    if(typeof(response.owner) !== 'undefined' && typeof(response.users) !== 'undefined'){
+    if(typeof(response.owner) !== 'undefined' && response.owner != null && typeof(response.users) !== 'undefined' && response.users != null){
         let user;
         result.admin = {
             owner: {
@@ -59,15 +58,53 @@ function adaptBoardResponseData(response){
             item = response.users[i];
             user = {
                 id: item.id,
-                username: item.username,
-                firstName: item.first_name,
-                lastName: item.last_name
+                username: item.user.username,
+                firstName: item.user.first_name,
+                lastName: item.user.last_name,
+                admin: item.perm_admin,
+                create: item.perm_admin || item.perm_create,
+                read: item.perm_admin || item.perm_read,
+                update: item.perm_admin || item.perm_update,
+                delete: item.perm_admin || item.perm_delete
             };
             result.admin.users.push(user);
         }
     }
 
     return result;
+}
+
+function validateUpdateBoardData(data){
+    let errors = {};
+    let anyErrors = false;
+    if(typeof(data.name) !== 'undefined'){
+        if(data.name.length > 50){
+            errors.name = {
+                string: "Board name is too long",
+                code: "too_long"
+            };
+            anyErrors = true;
+        }
+    }   
+
+    if(typeof(data.description) !== 'undefined'){
+        if(data.description.length > 1024){
+            errors.description = {
+                string: "Board description is too long",
+                code: "too_long"
+            };
+            anyErrors = true;
+        }
+    }
+
+    if(anyErrors){
+        throw {
+            type: ERRORS.VALIDATION,
+            errors: errors
+        };
+    }
+
+    return data;
 }
 
 export default {
@@ -163,7 +200,7 @@ export default {
         /**
          * Assigns new board cache
          * @param {*} state Provided by Vuex
-         * @param {*} payload Required format of the object:
+         * @param {Object} payload Required format of the object:
          * {
          *      board: {adapted API response},
          *      admin: {adapted API response}
@@ -174,6 +211,39 @@ export default {
             console.log(payload);
             state.board = payload.board;
             state.admin = payload.admin;
+        },
+        /**
+         * Updates board cache if it exists and the cached board has the same ID as the payload
+         * @param {*} state Provided by Vuex
+         * @param {Object} payload Required format:
+         * {
+         *      id: {Number},
+         *      [owner]: {
+         *          id: {Number},
+         *          username: {String},
+         *          firstName: {String},
+         *          lastName: {String}
+         *      },
+         *      [name]: {String},
+         *      [description]: {String}
+         * }
+         */
+        updateBoardCache(state, payload){
+            if(state.board != null){
+                if(payload.id == state.board.id){
+                    if(typeof(payload.name) !== 'undefined'){
+                        state.board.name = payload.name;
+                    }
+
+                    if(typeof(payload.description) !== 'undefined'){
+                        state.board.description = payload.description;
+                    }
+
+                    if(typeof(payload.owner) !== 'undefined' && state.admin != null){
+                        state.admin.owner = payload.owner;
+                    }
+                }
+            }
         }
     },
     actions: {
@@ -183,7 +253,6 @@ export default {
          * @param {*} payload Required format: 
          * {
          *      id: {Number}, // board id
-         *      [isAdmin]: {Boolean} // whether to request board as admin or regular user
          * }
          */
         async getData({commit, rootState, rootGetters}, payload){
@@ -198,9 +267,6 @@ export default {
                     }
                 };
             }
-            if(typeof(payload.isAdmin) === 'undefined'){
-                payload.isAdmin = false;
-            }
 
             let headers = rootGetters.standardRequestHeaders;
             let response = null;
@@ -210,8 +276,8 @@ export default {
                     url: rootState.apiUrl + API_BOARD.replace("%%BOARD_ID%%", payload.id),
                     headers: headers,
                     params: {
-                        include_users: payload.isAdmin,
-                        include_owner: payload.isAdmin
+                        include_users: true,
+                        include_owner: true
                     }
                 });
             } catch(error) {
@@ -232,6 +298,140 @@ export default {
             });
 
             return adapted;
+        },
+        /**
+         * Retrieves board data from the server
+         * @param {*} param0 Provided by Vuex
+         * @param {*} payload Required format: 
+         * {
+         *      id: {Number}, // board id
+         *      [allowCache]: {Boolean} // Use cache if data present?
+         * }
+         */
+        async getAdminData({state, dispatch}, payload){
+            if(typeof(payload.id) === 'undefined'){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: {
+                        id: {
+                            string: "This field is required",
+                            code: "required"
+                        }
+                    }
+                };
+            }
+
+            if(typeof(payload.allowCache) !== 'undefined'
+                && state.admin != null
+                && payload.allowCache
+                && state.board != null
+                && state.board.id == payload.id
+            ) {
+                return {
+                    admin: state.admin,
+                    board: state.board
+                };
+            }
+
+            await dispatch('getData', {
+                id: payload.id
+            });
+
+            return {
+                admin: state.admin,
+                board: state.board
+            };
+        },
+        
+        /**
+         * Updates board based on the provided payload
+         * If board id is the same as cached board id, the cache will be updated automatically
+         * @param {*} param0 Provided by Vuex
+         * @param {*} payload Required format:
+         * {
+         *      id: {Number},
+         *      [name]: {String},
+         *      [description]: {String},
+         *      [ownerId]: {Number}
+         * }
+         */
+        async updateBoard({commit, rootState, rootGetters}, payload){
+            if(typeof(payload.id) === 'undefined'){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: {
+                        id: {
+                            string: "This field is required",
+                            code: "required"
+                        }
+                    }
+                };
+            }
+
+            let id = payload.id;
+            let data = {};
+            let anyData = false;
+
+            if (typeof(payload.name) !== 'undefined'){
+                data.name = payload.name;
+                anyData = true;
+            }
+            if(typeof(payload.description) !== 'undefined'){
+                data.description = payload.description;
+                anyData = true;
+            }
+            if(typeof(payload.ownerId) !== 'undefined'){
+                data.owner_id = payload.ownerId;
+                anyData = true;
+            }
+
+            if(!anyData){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: {
+                        id: {
+                            string: "No changes",
+                            code: "no_changes"
+                        }
+                    }
+                };
+            }
+
+            let validatedData = validateUpdateBoardData(data);
+
+            let headers = rootGetters.standardRequestHeaders;
+            let response = null;
+            try {
+                response = await axios({
+                    method: 'patch',
+                    url: rootState.apiUrl + API_BOARD.replace("%%BOARD_ID%%", id),
+                    headers: headers,
+                    data: validatedData
+                });
+            } catch(error) {
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            let d = response.data;
+            commit('updateBoardCache', {
+                id: id,
+                name: d.name,
+                description: d.description,
+                owner: {
+                    id: d.owner.id,
+                    username: d.owner.username,
+                    firstName: d.owner.first_name,
+                    lastName: d.owner.last_name
+                }
+            });
+
+            return response;
         }
     }
+
 }

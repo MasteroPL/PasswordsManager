@@ -45,6 +45,7 @@
 								class="board-header__admin-button"
 								v-bind="attrs"
 								v-on="on"
+								@click="onAdministrationPanelButtonClick()"
 							>
 								<v-icon>settings</v-icon>
 							</v-btn>
@@ -310,19 +311,12 @@ const STATES = {
 export default {
 	name: "Board",
 
-	props: {
-		isAdmin: {
-			required: false,
-			type: Boolean,
-			default: false
-		}
-	},
-
 	components: {
 		"GenericPasswordDetailsDialog": GenericPasswordDetailsDialog
 	},
 	data: () => ({
 		state: STATES.LOADING,
+		isAdmin: false,
 		
 		selectedGroupDesktop: 0,
 		selectedGroupMobile: null,
@@ -463,6 +457,8 @@ export default {
 
 			if(board != null){
 				this.board = board;
+				this.isAdmin = board.permissions.admin;
+
 				this.boardTabs = board.tabs;
 				this.tabPasswords = [];
 
@@ -472,6 +468,7 @@ export default {
 				this.board = null;
 				this.tabPasswords = [];
 				this.boardTabs = [];
+				this.isAdmin = false;
 			}
 
 			console.log(board.tabs);
@@ -490,8 +487,7 @@ export default {
 			let exception = false;
 			try {
 				await this.$store.dispatch("board/getData", {
-					id: this.$route.params.board_id,
-					isAdmin: this.isAdmin
+					id: this.$route.params.board_id
 				});
 			} catch(error){
 				exception = true;
@@ -578,6 +574,10 @@ export default {
 				this.cropDescription = false;
 				this.$forceUpdate();
 			}
+		},
+
+		onAdministrationPanelButtonClick(){
+			this.$router.push("/board/" + this.$route.params.board_id + "/admin/");
 		},
 
 		onCopiedToClickboard(){

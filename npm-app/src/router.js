@@ -16,7 +16,7 @@ const router = new VueRouter({
         {path: '/boards/new/', component: BoardAdd, name:"boards_new"},
         {path: '/passwords/', component: PasswordsList},
         {path: '/login/', component: Login, name:"login"},
-        {path: '/board/:board_id/', component: Board, name:"board", props: true},
+        {path: '/board/:board_id/', component: Board, name:"board"},
         {path: '/board/:board_id/admin/', component: BoardAdmin, name:"board_admin"},
         {path: '/board/:board_id/tabs/', component: BoardGroupsEdit, name:"board_tabs"}
     ]

@@ -311,8 +311,7 @@ export default {
 			this.$router.push({
 				name: 'board',
 				params: {
-					board_id: item.id,
-					isAdmin: item.isAdmin
+					board_id: item.id
 				}
 			});
 		}
