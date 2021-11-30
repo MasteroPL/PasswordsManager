@@ -465,6 +465,31 @@ class BoardAssignmentAPIPatchResponseSerializer(serializers.ModelSerializer):
         )
 
 
+class BoardAssignmentsUsersSearchAPIGetRequestSerializer(serializers.Serializer):
+    search_text = serializers.CharField(max_length=256, allow_blank=True)
+
+class BoardAssignmentsUsersSearchAPIGetResponseSerializer(serializers.ModelSerializer):
+
+    search_value = serializers.CharField()
+
+    # def get_search_value(self, obj):
+    #     username = obj.username
+    #     first_name = obj.first_name if obj.first_name is not None else ""
+    #     last_name = obj.last_name if obj.last_name is not None else ""
+
+    #     return username + " (" + last_name + " " + first_name + ")" 
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "search_value"
+        )
+
+
 # -------------
 # BoardTabs API 
 # -------------

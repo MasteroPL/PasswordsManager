@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.db.models.expressions import Case, Value, When
 from django.db.models.query import Prefetch
 from django.db.models.query_utils import Q
@@ -23,6 +24,7 @@ from main.utils.board_tabs_builder import (
 )
 
 from .boards_serializers import (
+    BoardAssignmentsUsersSearchAPIGetResponseSerializer,
     BoardsAPIGetRequestSerializer,
     BoardsAPIGetResponseSerializer,
     BoardsAPIPostRequestSerializer,
@@ -40,7 +42,8 @@ from .boards_serializers import (
     BoardAssignmentAPIPatchResponseSerializer,
     BoardTabsAPIGetResponseSerializer,
     BoardTabsAPIPostRequestSerializer,
-    BoardTabAPIPatchRequestSerializer
+    BoardTabAPIPatchRequestSerializer,
+    BoardAssignmentsUsersSearchAPIGetRequestSerializer
 )
 
 # ------------------
@@ -671,6 +674,50 @@ class BoardAssignmentAPI(GenericAPIView):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
+class BoardAssignmentsUsersSearchAPI(GenericAPIView):
+    
+    def get_queryset(self, board:Board):
+        owner_id = board.owner_id
+        assigned_ids = BoardUserAssignment.objects.filter(board_id=board.id).values_list("user_id", flat=True)
+
+        qs = User.objects.all().exclude(
+            Q(id=owner_id)|Q(id__in=assigned_ids)
+        ).annotate(
+            search_value=Concat(
+                "username",
+                Value(" ("),
+                "last_name",
+                Value(" "),
+                "first_name",
+                Value(")")
+            )
+        )
+
+        return qs
+
+
+    def get(self, request, board_id:int, format=None):
+        obj = None
+        try:
+            obj = Board.objects.get(id=board_id)
+        except Board.DoesNotExist:
+            raise Http404()
+
+        serializer = BoardAssignmentsUsersSearchAPIGetRequestSerializer(data=request.query_params)
+
+        if serializer.is_valid():
+            data = serializer.validated_data
+            qs = self.get_queryset(obj).filter(
+                search_value__icontains=data["search_text"]
+            ).order_by("search_value")[:10]
+
+            response = BoardAssignmentsUsersSearchAPIGetResponseSerializer(instance=qs, many=True)
+
+            return Response(data=response.data, status=status.HTTP_200_OK)
+
+        errors = serialization_errors_to_response(serializer.errors)
+        return Response(data=errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class BoardLeaveAPI(GenericAPIView):

@@ -3,6 +3,9 @@ import axios from 'axios';
 import { handleStandardRequestResponses, encodeEntities } from '..';
 
 const API_BOARD = "api/v1/board/%%BOARD_ID%%";
+const API_BOARD_USER_SEARCH = "api/v1/board/%%BOARD_ID%%/assignments/search-user/";
+const API_BOARD_ASSIGNMENTS = "api/v1/board/%%BOARD_ID%%/assignments/";
+const API_BOARD_ASSIGNMENT = "api/v1/board/%%BOARD_ID%%/assignment/%%ASSIGNMENT_ID%%";
 
 function adaptBoardResponseData(response){
     let item;
@@ -57,7 +60,8 @@ function adaptBoardResponseData(response){
         for(let i = 0; i < response.users.length; i++){
             item = response.users[i];
             user = {
-                id: item.id,
+                assignmentId: item.id,
+                userId: item.user.id,
                 username: item.user.username,
                 firstName: item.user.first_name,
                 lastName: item.user.last_name,
@@ -69,6 +73,27 @@ function adaptBoardResponseData(response){
             };
             result.admin.users.push(user);
         }
+    }
+
+    return result;
+}
+
+function adaptBoardUserSearchData(response){
+    let result = [];
+    let obj;
+    let item;
+
+    for(let i = 0; i < response.length; i++){
+        item = response[i];
+        obj = {
+            id: item.id,
+            username: item.username,
+            firstName: item.first_name,
+            lastName: item.last_name,
+            searchValue: item.search_value
+        };
+
+        result.push(obj);
     }
 
     return result;
@@ -105,6 +130,16 @@ function validateUpdateBoardData(data){
     }
 
     return data;
+}
+
+function sortByUsernameCompare(a, b){
+	if(a.username < b.username){
+		return -1;
+	}
+	else if(a.username > b.username){
+		return 1;
+	}
+	return 0;
 }
 
 export default {
@@ -146,10 +181,16 @@ export default {
         admin: null // {
         //     users: [
         //         {
-        //             id: {Number},
+        //             assignmentId: {Number},
+        //             userId: {Number},
         //             username: {String},
         //             firstName: {String},
-        //             lastName: {String}
+        //             lastName: {String},
+    //                 admin: response.permissions.admin,
+    //                 create: response.permissions.create,
+    //                 read: response.permissions.read,
+    //                 update: response.permissions.update,
+    //                 delete: response.permissions.delete
         //         }
         //     ],
         //     owner: {
@@ -163,6 +204,14 @@ export default {
     getters: {
         getBoard: (state) => {
             return state.board;
+        },
+
+        getSortedUsers: (state) => {
+            if(state.admin == null){
+                return null;
+            }
+
+            return state.admin.users.sort(sortByUsernameCompare);
         },
 
         defaultTab: (state) => {
@@ -207,8 +256,6 @@ export default {
          * }
          */
         newCache (state, payload) {
-            console.log("newCache");
-            console.log(payload);
             state.board = payload.board;
             state.admin = payload.admin;
         },
@@ -241,6 +288,59 @@ export default {
 
                     if(typeof(payload.owner) !== 'undefined' && state.admin != null){
                         state.admin.owner = payload.owner;
+                    }
+                }
+            }
+        },
+        /**
+         * Adds user assignment to board cache if cache exists
+         * @param {*} state Provided by Vuex
+         * @param {Object} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      user: Object following format of admin.users items
+         * }
+         */
+        addBoardAssignment(state, payload){
+            if(state.board != null && state.admin != null && state.board.id == payload.boardId){
+                state.admin.users.push(payload.user);
+            }
+        },
+        /**
+         * Edits assignment in cache if cache exists
+         * @param {*} state Provided by Vuex
+         * @param {*} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      assignment: {Object}
+         * }
+         */
+        editBoardAssignment(state, payload){
+            if(state.board != null && state.admin != null && state.board.id == payload.boardId){
+                let assignmentId = payload.assignment.assignmentId;
+                let data = payload.assignment;
+
+                for(let i = 0; i < state.admin.users.length; i++){
+                    if(state.admin.users[i].assignmentId == assignmentId){
+                        state.admin.users[i].admin = data.admin;
+                        state.admin.users[i].create = data.create;
+                        state.admin.users[i].read = data.read;
+                        state.admin.users[i].update = data.update;
+                        state.admin.users[i].delete = data.delete;
+
+                        return;
+                    }
+                }
+            }
+        },
+        removeBoardAssignment(state, payload){
+            if(state.board != null && state.admin != null && state.board.id == payload.boardId){
+                let assignmentId = payload.assignmentId;
+
+                for(let i = 0; i < state.admin.users.length; i++){
+                    if(state.admin.users[i].assignmentId == assignmentId){
+                        state.admin.users.splice(i, 1);
+                        return;
                     }
                 }
             }
@@ -308,7 +408,7 @@ export default {
          *      [allowCache]: {Boolean} // Use cache if data present?
          * }
          */
-        async getAdminData({state, dispatch}, payload){
+        async getAdminData({state, getters, dispatch}, payload){
             if(typeof(payload.id) === 'undefined'){
                 throw {
                     type: ERRORS.VALIDATION,
@@ -328,7 +428,10 @@ export default {
                 && state.board.id == payload.id
             ) {
                 return {
-                    admin: state.admin,
+                    admin: {
+                        owner: state.admin.owner,
+                        users: getters.getSortedUsers
+                    },
                     board: state.board
                 };
             }
@@ -338,7 +441,10 @@ export default {
             });
 
             return {
-                admin: state.admin,
+                admin: {
+                    owner: state.admin.owner,
+                    users: getters.getSortedUsers
+                },
                 board: state.board
             };
         },
@@ -431,6 +537,327 @@ export default {
             });
 
             return response;
+        },
+        /**
+         * Searches for users available to assign the the provided board
+         * @param {*} param0 Provided by Vuex
+         * @param {*} payload Required format
+         * {
+         *      boardId: {Number},
+         *      searchValue: {String},
+         *      [abortControllerSignal]: AbortController().signal
+         * }
+         */
+        async searchAddUser({rootState, rootGetters}, payload){
+            if(typeof(payload.boardId) === 'undefined'){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: {
+                        boardId: {
+                            string: "This field is required",
+                            code: "required"
+                        }
+                    }
+                };
+            }
+            if(typeof(payload.searchValue) === 'undefined'){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: {
+                        searchValue: {
+                            string: "This field is required",
+                            code: "required"
+                        }
+                    }
+                };
+            }
+
+            let id = payload.boardId;
+            let queryParams = {
+                search_text: payload.searchValue
+            };
+            if(payload.searchValue == null) payload.searchValue = "";
+            if(payload.searchValue.length > 256){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: {
+                        searchValue: {
+                            string: "Maximum length of search string is 256 characters",
+                            code: "max_length"
+                        }
+                    }
+                };
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            let response = null;
+
+            let requestBody = {
+                params: queryParams,
+                headers: headers
+            };
+
+            if (typeof(payload.abortControllerSignal) !== 'undefined'){
+                requestBody.signal = payload.abortControllerSignal
+            }
+
+            try {
+                response = await axios.get(
+                    rootState.apiUrl + API_BOARD_USER_SEARCH.replace("%%BOARD_ID%%", id),
+                    requestBody
+                );
+            } catch(error){
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                }
+            }
+
+            let result = adaptBoardUserSearchData(response.data);
+            return result;
+        },
+
+        /**
+         * Adds new user to board
+         * @param {*} param0 Provided Vuex
+         * @param {*} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      userId: {Number},
+         *      [admin]: {Boolean},
+         *      [create]: {Boolean},
+         *      [read]: {Boolean},
+         *      [update]: {Boolean},
+         *      [delete]: {Boolean}
+         * }
+         */
+        async assignUser({commit, rootState, rootGetters}, payload){
+            let requiredFields = [
+                "boardId", "userId"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let requestData = {
+                user_id: payload.userId
+            };
+
+            // Mapping optional data
+            let dataArray = [
+                [ "admin", "perm_admin" ],
+                [ "create", "perm_create" ],
+                [ "read", "perm_read" ],
+                [ "update", "perm_update" ],
+                [ "delete", "perm_delete" ]
+            ];
+
+            for(let i = 0; i < dataArray.length; i++){
+                if(typeof(payload[dataArray[i][0]]) !== 'undefined'){
+                    requestData[dataArray[i][1]] = payload[dataArray[i][0]];
+                }
+            }
+
+            let response = null;
+            let headers = rootGetters.standardRequestHeaders;
+            try {
+                response = await axios({
+                    method: "POST",
+                    url: rootState.apiUrl + API_BOARD_ASSIGNMENTS.replace("%%BOARD_ID%%", payload.boardId),
+                    headers: headers,
+                    data: requestData
+                });
+            } catch(error){
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            let result = {
+                assignmentId: response.data.id,
+                userId: response.data.user.id,
+                username: response.data.user.username,
+                firstName: response.data.user.first_name,
+                lastName: response.data.user.last_name,
+                admin: response.data.perm_admin,
+                create: response.data.perm_create,
+                read: response.data.perm_read,
+                update: response.data.perm_update,
+                delete: response.data.perm_delete
+            };
+
+            commit("addBoardAssignment", {
+                boardId: payload.boardId,
+                user: result
+            });
+
+            return result;
+        },
+        /**
+         * Edits existing user assignment
+         * @param {*} param0 Provided by Vuex
+         * @param {Object} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      assignmentId: {Number},
+         *      [admin]: {Boolean},
+         *      [create]: {Boolean},
+         *      [read]: {Boolean},
+         *      [update]: {Boolean},
+         *      [delete]: {Boolean}
+         * }
+         */
+        async editUserAssignment({commit, rootState, rootGetters}, payload){
+            let requiredFields = [
+                "boardId", "assignmentId"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let requestData = {};
+            let any = false;
+            let dataArray = [
+                ["admin", "perm_admin"],
+                ["create", "perm_create"],
+                ["read", "perm_read"],
+                ["update", "perm_update"],
+                ["delete", "perm_delete"]
+            ];
+
+            for(let i = 0; i < dataArray.length; i++){
+                if(typeof(payload[dataArray[i][0]]) !== 'undefined'){
+                    requestData[dataArray[i][1]] = payload[dataArray[i][0]];
+                    any = true;
+                }
+            }
+
+            if(!any){
+                return null;
+            }
+
+            let response = null;
+            let headers = rootGetters.standardRequestHeaders;
+            try {
+                response = await axios({
+                    method: "PATCH",
+                    url: rootState.apiUrl + API_BOARD_ASSIGNMENT.replace("%%BOARD_ID%%", payload.boardId).replace("%%ASSIGNMENT_ID%%", payload.assignmentId),
+                    headers: headers,
+                    data: requestData
+                });
+            } catch(error){
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            let result = {
+                assignmentId: response.data.id,
+                userId: response.data.user_id,
+                admin: response.data.perm_admin,
+                create: response.data.perm_create,
+                read: response.data.perm_read,
+                update: response.data.perm_update,
+                delete: response.data.perm_delete
+            };
+
+            commit("editBoardAssignment", {
+                boardId: payload.boardId,
+                assignment: result
+            });
+
+            return result;
+        },
+        /**
+         * Removes existing user assignment from the board
+         * @param {*} param0 Provided by Vuex
+         * @param {*} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      assignmentId: {Number}
+         * }
+         */
+        async removeUserAssignment({commit, rootState, rootGetters}, payload){
+            let requiredFields = [
+                "boardId", "assignmentId"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            try {
+                await axios({
+                    method: "DELETE",
+                    url: rootState.apiUrl + API_BOARD_ASSIGNMENT.replace("%%BOARD_ID%%", payload.boardId).replace("%%ASSIGNMENT_ID%%", payload.assignmentId),
+                    headers: headers
+                });
+            } catch(error){
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            commit("removeBoardAssignment", {
+                boardId: payload.boardId,
+                assignmentId: payload.assignmentId
+            });
         }
     }
 

@@ -484,6 +484,8 @@ export default {
 				that.getDataTimeout = null;
 			}, 200);
 
+			console.log("TEST");
+
 			let exception = false;
 			try {
 				await this.$store.dispatch("board/getData", {

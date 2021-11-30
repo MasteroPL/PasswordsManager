@@ -129,7 +129,7 @@
 						<v-spacer></v-spacer>
 						<v-btn
 							style="margin-right: 8px;"
-							:disabled="!details.anyChanges || details.controlsDisabled"
+							:disabled="(!details.anyChanges || details.controlsDisabled) && details.boardOwner.disabled"
 							@click="onDetailsCancelClick()"
 						>Cancel</v-btn>
 						<v-btn
@@ -217,6 +217,11 @@
 						</v-btn>
 					</v-row>
 
+					<h3
+						v-if="users.displayItems.length == 0"
+						style="opacity: 0.64; text-align: center; margin-top: 64px;"
+					>No users have been added yet</h3>
+
 					<v-list
 						class="board-admin__users-list"
 					>
@@ -299,14 +304,16 @@
 
 		<GenericRemoveBoardUserDialog
 			ref="GenericRemoveBoardUserDialog"
-			:userId="users.removeDialog.userId"
+			:assignmentId="users.removeDialog.assignmentId"
 			:boardId="parseInt($route.params.board_id)"
 			:userDisplayName="users.removeDialog.userDisplayName"
+
+			@deleted="loadData(true)"
 		></GenericRemoveBoardUserDialog>
 
 		<GenericEditBoardUserDialog
 			ref="GenericEditBoardUserDialog"
-			:userId="users.editDialog.userId"
+			:assignmentId="users.editDialog.assignmentId"
 			:boardId="parseInt($route.params.board_id)"
 
 			:canAddAdministrators="permissionOwner"
@@ -315,6 +322,9 @@
 			:permissionRead="users.editDialog.read"
 			:permissionUpdate="users.editDialog.update"
 			:permissionDelete="users.editDialog.delete"
+
+			@created="loadData(true)"
+			@updated="loadData(true)"
 		></GenericEditBoardUserDialog>
 	</div>
 </template>
@@ -388,11 +398,11 @@ export default {
 		},
 		users: {
 			removeDialog: {
-				userId: -2,
-				userDisplayName: "andrzej.kowalski (Kowalski Andrzej)" 
+				assignmentId: -1,
+				userDisplayName: null 
 			},
 			editDialog: {
-				userId: null,
+				assignmentId: null,
 				administrator: false,
 				create: false,
 				read: false,
@@ -486,7 +496,8 @@ export default {
 					subt2 = arr.join(", ");
 				}
 				obj = {
-					id: item.id,
+					assignmentId: item.assignmentId,
+					userId: item.userId,
 					name: item.username,
 					create: item.create,
 					read: item.read,
@@ -519,7 +530,8 @@ export default {
 			for(let i = 0; i < adminData.users.length; i++){
 				item = adminData.users[i];
 				obj = {
-					id: item.id,
+					assignmentId: item.assignmentId,
+					userId: item.userId,
 					username: item.username,
 					firstName: item.firstName,
 					lastName: item.lastName,
@@ -596,6 +608,7 @@ export default {
 			this.details.boardName.current = this.details.boardName.initial;
 			this.details.boardDescription.current = this.details.boardDescription.initial;
 			this.details.boardOwner.current = this.details.boardOwner.initial.id;
+			this.details.boardOwner.disabled = true;
 
 			this.details.anyChanges = false;
 		},
@@ -693,13 +706,13 @@ export default {
 		* Event handlers - USERS
 		*/
 		onUserRemoveClick(item){
-			this.users.removeDialog.userId = item.id;
+			this.users.removeDialog.assignmentId = item.assignmentId;
 			this.users.removeDialog.userDisplayName = `${item.name} (${item.subtitle1})`;
 			this.$refs.GenericRemoveBoardUserDialog.open();
 		},
 
 		onUserAddClick(){
-			this.users.editDialog.userId = null;
+			this.users.editDialog.assignmentId = null;
 			this.users.editDialog.administrator = false;
 			this.users.editDialog.create = false;
 			this.users.editDialog.read = true;
@@ -710,7 +723,7 @@ export default {
 		},
 
 		onUserEditClick(item){
-			this.users.editDialog.userId = item.id;
+			this.users.editDialog.assignmentId = item.assignmentId;
 			this.users.editDialog.administrator = item.admin;
 			if(!item.admin){
 				this.users.editDialog.create = item.create;

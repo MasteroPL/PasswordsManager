@@ -2,6 +2,7 @@
 	<v-dialog
 		v-model="model"
 		max-width="300"
+		:persistent="controlsDisabled"
 	>
 		<v-card>
 			<v-card-title>Remove board user</v-card-title>
@@ -17,16 +18,25 @@
 
 			<v-divider></v-divider>
 
+			<v-progress-linear
+				:active="loading"
+				indeterminate
+				color="primary"
+			></v-progress-linear>
+
 			<v-card-actions>
 				<v-spacer></v-spacer>
 
 				<v-btn
 					text
+					:disabled="controlsDisabled"
 					@click="close()"
 				>Cancel</v-btn>
 				<v-btn
 					text
+					:disabled="controlsDisabled"
 					color="red"
+					@click="onSubmit()"
 				>Remove</v-btn>
 			</v-card-actions>
 		</v-card>
@@ -38,7 +48,7 @@ export default {
 	name: "GenericRemoveBoardUserDialog",
 
 	props: {
-		userId: {
+		assignmentId: {
 			type: Number,
 			required: true
 		},
@@ -55,7 +65,11 @@ export default {
 	},
 
 	data: () => ({
-		model: false
+		model: false,
+
+		loading: false,
+		loaderTimeout: null,
+		controlsDisabled: false
 	}),
 	mounted() {
 
@@ -66,6 +80,46 @@ export default {
 		},
 		close() {
 			this.model = false;
+		},
+
+		async onSubmit(){
+			var that = this;
+			this.controlsDisabled = true;
+			if(this.loaderTimeout != null){
+				clearTimeout(this.loaderTimeout);
+			}
+			this.loaderTimeout = setTimeout(function(){
+				that.loaderTimeout = null;
+				that.loading = true;
+			});
+
+			let exception = false;
+			try {
+				await this.$store.dispatch("board/removeUserAssignment", {
+					boardId: this.boardId,
+					assignmentId: this.assignmentId
+				});
+			} catch(error){
+				exception = true;
+				console.log(error);
+
+				// TODO
+			} finally {
+				if(this.loaderTimeout != null){
+					clearTimeout(this.loaderTimeout);
+				}
+				this.loaderTimeout = null;
+				this.loading = false;
+				this.controlsDisabled = false;
+			}
+
+			if(exception){
+				return;
+			}
+
+			this.$emit("deleted");
+
+			this.close();
 		}
 	}
 }
