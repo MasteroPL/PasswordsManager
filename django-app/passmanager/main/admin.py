@@ -4,7 +4,8 @@ from main.models import (
 	UserPasswordAssignment,
 	Board,
 	BoardUserAssignment,
-	BoardTab
+	BoardTab,
+	BoardPassword
 )
 
 # Register your models here.
@@ -112,3 +113,35 @@ class BoardTabAdmin(admin.ModelAdmin):
 	)
 
 admin.site.register(BoardTab, BoardTabAdmin)
+
+
+
+class BoardPasswordAdmin(admin.ModelAdmin):
+	list_display = (
+		"password",
+		"updated_at",
+		"updated_by",
+		"created_at",
+		"created_by"
+	)
+
+	search_fields = (
+		"password__code",
+		"password__title",
+		"password__url",
+		"password__username",
+		"password__description",
+	)
+
+	list_display_links = (
+		'password',
+	)
+
+	exclude = (
+		"created_at",
+		"created_by",
+		"updated_at",
+		"updated_by"
+	)
+
+admin.site.register(BoardPassword, BoardPasswordAdmin)

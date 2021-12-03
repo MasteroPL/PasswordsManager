@@ -16,6 +16,7 @@
 								color="secondary"
 								v-on="on"
 								v-bind="attrs"
+								@click="onEditClick()"
 							>
 								<v-icon>mdi-pencil</v-icon>
 							</v-btn>
@@ -154,7 +155,7 @@
 <script>
 import GenericDeletePasswordDialog from '@/generic/GenericDeletePasswordDialog.vue'
 
-var SURROGATE_PAIR_REGEXP = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g,
+const SURROGATE_PAIR_REGEXP = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g,
     // Match everything outside of normal chars and " (quote character)
     NON_ALPHANUMERIC_REGEXP = /([^#-~| |!])/g;
 
@@ -167,8 +168,9 @@ export default {
 	
 	props: {
 		passwordId: {
-			type: Number,
-			required: true
+			type: String,
+			required: false,
+			default: null
 		},
 		title: {
 			type: String,
@@ -236,7 +238,7 @@ export default {
 			if(this.notes != null){
 				var tmpNotes = this.notes;
 				tmpNotes = this.encodeEntities(tmpNotes);
-				tmpNotes = tmpNotes.replace("&#10;", "<br />");
+				tmpNotes = tmpNotes.replace(/&#10;/g, "<br />");
 				this.$data._notes = tmpNotes;
 			}
 
@@ -256,6 +258,7 @@ export default {
 		* @returns {string} escaped text
 		*/
 		encodeEntities(value) {
+			console.log(value);
 			return value.
 				replace(/&/g, '&amp;').
 				replace(SURROGATE_PAIR_REGEXP, function(value) {
@@ -323,6 +326,10 @@ export default {
 			this.urlCopyTimeout = setTimeout(function(){
 				that.urlCopyTimeout = null;
 			}, 750);
+		},
+
+		onEditClick(){
+			this.$router.push("/board/" + this.$route.params.board_id + "/password/" + this.passwordId);
 		},
 
 		onDeleteClick(){

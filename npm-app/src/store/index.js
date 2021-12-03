@@ -97,6 +97,9 @@ const store = new Vuex.Store({
         setTokens (state, payload) {
             state.accessToken = payload.accessToken;
             state.refreshToken = payload.refreshToken;
+
+            localStorage.setItem("jwtAccess", payload.accessToken);
+            localStorage.setItem("jwtRefresh", payload.refreshToken);
         },
 
         /**
@@ -106,10 +109,31 @@ const store = new Vuex.Store({
          */
         setUserPayload (state, payload){
             state.userPayload = payload;
+
+            localStorage.setItem("userPayload", JSON.stringify(payload));
+        },
+
+        loadLocalStorage (state) {
+            state.accessToken = localStorage.getItem("jwtAccess");
+            state.refreshToken = localStorage.getItem("jwtRefresh");
+            state.userPayload = JSON.parse(localStorage.getItem("userPayload"));
+        },
+
+        clearCaches (state) {
+            localStorage.removeItem("jwtAccess");
+            localStorage.removeItem("jwtRefresh");
+            localStorage.removeItem("userPayload");
+
+            state.accessToken = null;
+            state.refreshToken = null;
+            state.userPayload = null;
         }
     },
 
     getters: {
+        userPayload: (state) => {
+            return state.userPayload;
+        },
         standardRequestHeaders: (state) => {
             let jwt = state.accessToken;
 

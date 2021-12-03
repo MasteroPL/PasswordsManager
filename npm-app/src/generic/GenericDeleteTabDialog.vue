@@ -11,7 +11,7 @@
 			<v-card-text style="padding-top: 20px;">
 				<p
 					style="font-size: 16px;"
-				>Group chosen for deletion: <br /><b>{{ this.groupName }}</b></p>
+				>Group chosen for deletion: <br /><b>{{ this.tabName }}</b></p>
 
 				<v-checkbox
 					color="secondary"
@@ -25,12 +25,12 @@
 					:style="(deletePasswords) ? 'height: 0; padding-top: 0' : 'height: 76px'" 
 				>
 					<v-select
-						v-model="groupSelectModel"
+						v-model="tabSelectModel"
 						color="secondary"
 						outlined
 						item-text="name"
 						item-value="id"
-						:items="groups"
+						:items="tabs"
 						label="Move passwords to group"
 					></v-select>
 				</div>
@@ -68,7 +68,7 @@
 			<v-divider></v-divider>
 
 			<v-card-text style="padding-top: 20px">
-			<p>Are you sure you want to delete the group <b>{{ this.groupName }}</b><span v-if="deletePasswords"> and all of its passwords</span>?</p>
+			<p>Are you sure you want to delete the group <b>{{ this.tabName }}</b><span v-if="deletePasswords"> and all of its passwords</span>?</p>
 
 				<p style="margin-bottom: 0">This action <b><u>cannot be undone</u></b>!</p>
 			</v-card-text>
@@ -91,6 +91,7 @@
 				<v-btn
 					color="red"
 					text
+					@click="onSubmit()"
 				>
 				DELETE
 			</v-btn>
@@ -106,35 +107,38 @@
 export default {
 	name: "GenericDeleteGroupDialog",
 	props: {
-		groupId: {
+		tabId: {
 			type: Number,
-			required: true
+			required: false,
+			default: null
 		},
-		groupName: {
+		tabName: {
 			type: String,
-			required: true
+			required: false,
+			default: null
 		},
-		definedGroups: {
+		definedTabs: {
 			type: Array,
-			required: true
+			required: false,
+			default: null
 		}
 	},
 	data: () => ({
 		model: false,
 		confirmationDialog: false,
 		deletePasswords: false,
-		groupSelectModel: null,
-		groups: [],
+		tabSelectModel: null,
+		tabs: [],
 		loader: false
 	}),
 	methods: {
 		init(){
-			this.groups.splice(0, this.groups.length);
+			this.tabs.splice(0, this.tabs.length);
 
-			if(this.definedGroups != null){
-				for(let i = 0; i < this.definedGroups.length; i++){
-					if(this.definedGroups[i].id != this.groupId){
-						this.groups.push(this.definedGroups[i]);
+			if(this.definedTabs != null){
+				for(let i = 0; i < this.definedTabs.length; i++){
+					if(this.definedTabs[i].id != this.tabId){
+						this.tabs.push(this.definedTabs[i]);
 					}
 				}
 			}
@@ -143,12 +147,27 @@ export default {
 		open(){
 			this.init();
 			var that = this;
-			if(this.groupSelectModel == null){
-				this.groupSelectModel = this.groups[0].id;
+			if(this.tabSelectModel == null){
+				this.tabSelectModel = this.tabs[0].id;
 			}
 			this.$nextTick(function(){
 				that.model = true;
 			});
+		},
+		close() {
+			this.model = false;
+		},
+
+		async onSubmit(){
+			await this.$store.dispatch("board/removeTab", {
+				boardId: this.$route.params.board_id,
+				tabId: this.tabId,
+				removePasswords: this.deletePasswords,
+				movePasswordsTo: this.tabSelectModel
+			});
+
+			this.$emit("deleted");
+			this.close();
 		}
 	}
 }

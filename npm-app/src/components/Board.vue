@@ -79,6 +79,7 @@
 			color="secondary"
 			dark
 			class="board__add-action_button"
+			@click="onAddPasswordButtonClick()"
 		>
 			<v-icon>mdi-plus</v-icon>
 		</v-btn>
@@ -124,6 +125,7 @@
 					icon
 					color="secondary"
 					v-if="isAdmin"
+					@click="onTabsAdminButtonClick()"
 				>
 					<v-icon>mdi-pencil</v-icon>
 				</v-btn>
@@ -209,13 +211,15 @@
 				item-value="id"
 				item-text="name"
 				class="board-mobile__group-select"
-				:style="(isAdmin) ? 'width: calc(100% - 50px);' : 'width: 100%;'"
+				:style="(isAdmin) ? 'width: calc(100% - 50px);' : 'width: calc(100% - 16px);'"
 			></v-select>
 
 			<v-btn
 				class="board-mobile__group-edit-button"
 				icon
 				color="secondary"
+				v-if="isAdmin"
+				@click="onTabsAdminButtonClick()"
 			>
 				<v-icon>mdi-pencil</v-icon>
 			</v-btn>
@@ -315,7 +319,7 @@ export default {
 		"GenericPasswordDetailsDialog": GenericPasswordDetailsDialog
 	},
 	data: () => ({
-		state: STATES.LOADING,
+		state: STATES.INITIAL,
 		isAdmin: false,
 		
 		selectedGroupDesktop: 0,
@@ -326,6 +330,7 @@ export default {
 		cropTimeout: null,
 		boardDescriptionStyle: "cursor: pointer; max-height: 22.5px;",
 		
+		preventSelectAutoupdate: false,
 
 		board: null, // {
 		// 	boardName: "SampleBoard with very very very long name",
@@ -340,57 +345,10 @@ export default {
 
 		passwordCopyInProgress: false,
 
-		boardTabs: [
-			{
-				id: -2,
-				name: "Group 1"
-			},
-			{
-				id: -3,
-				name: "Group 2"
-			},
-			// This one will always be added at the end
-			{
-				id: -1,
-				name: "Not grouped"
-			}
-		],
-		tabPasswords: [
-			{
-				id: -2,
-				title: "Password 1",
-				username: "User123",
-				url: null,
-				notes: "Sample notes with \na new line\nsome <b>html to spice things up</b>",
-				passwordLoader: false
-			},
-			{
-				id: -3,
-				title: "Password 2",
-				username: "User1234",
-				url: "https://gooooooooogle.com",
-				notes: "Sample notes with \na new line",
-				passwordLoader: false
-			},
-			{
-				id: -4,
-				title: "Password 3",
-				username: "User12345",
-				url: null,
-				notes: null,
-				passwordLoader: false
-			},
-			{
-				id: -5,
-				title: "Password 4",
-				username: "User123456",
-				url: null,
-				notes: "Sample notes with \na new line",
-				passwordLoader: false
-			}
-		],
+		boardTabs: [],
+		tabPasswords: [],
 		passwordDetailsDialog: {
-			passwordId: -1,
+			passwordId: null,
 			model: false,
 			requestId: 0, // allows to ignore cancelled requests
 
@@ -440,29 +398,53 @@ export default {
 		// List group wants the selected index,
 		// Select wants the selected id
 		selectedGroup(newValue) {
-			this.selectedGroupMobile = newValue;
-			this.selectedGroupDesktop = this.getSelectedGroupDesktopById(newValue);
+			if(!this.preventSelectAutoupdate){
+				this.selectedGroupMobile = newValue;
+				this.selectedGroupDesktop = this.getSelectedGroupDesktopById(newValue);
+			}
+
+			this.onSelectTabChange();
 		},
 		selectedGroupMobile(newValue){
 			this.selectedGroupDesktop = this.getSelectedGroupDesktopById(newValue);
+			this.preventSelectAutoupdate = true;
+			this.selectedGroup = newValue;
+			this.preventSelectAutoupdate = false;
 		},
 		selectedGroupDesktop(newValue){
 			this.selectedGroupMobile = this.boardTabs[newValue].id;
+			this.preventSelectAutoupdate = true;
+			this.selectedGroup = this.boardTabs[newValue].id;
+			this.preventSelectAutoupdate = false;
 		}
 	},
 	methods: {
 		
+		loadTabPasswords(tabId){
+			this.tabPasswords.splice(0, this.tabPasswords.length);
+			let passwords = this.$store.getters["board/getTabById"](tabId).passwords;
+			for(let i = 0; i < passwords.length; i++){
+				this.tabPasswords.push({
+					id: passwords[i].code,
+					title: passwords[i].title,
+					notes: passwords[i].description,
+					username: passwords[i].username,
+					url: passwords[i].url,
+					passwordLoader: false
+				});
+			}
+		},
+
 		adaptStoreData(){
 			let board = this.$store.getters["board/getBoard"];
-
+			console.log(board);
 			if(board != null){
 				this.board = board;
 				this.isAdmin = board.permissions.admin;
 
 				this.boardTabs = board.tabs;
-				this.tabPasswords = [];
-
 				this.selectedGroup = board.tabs[0].id;
+				this.loadTabPasswords(board.tabs[0].id);
 			}
 			else{
 				this.board = null;
@@ -536,7 +518,9 @@ export default {
 			this.passwordDetailsDialog.url = passwordItem.url;
 			this.passwordDetailsDialog.notes = passwordItem.notes;
 
-			this.$refs.GenericPasswordDetailsDialog.open();
+			this.$nextTick(function(){
+				this.$refs.GenericPasswordDetailsDialog.open();
+			});
 		},
 
 
@@ -582,6 +566,10 @@ export default {
 			this.$router.push("/board/" + this.$route.params.board_id + "/admin/");
 		},
 
+		onTabsAdminButtonClick(){
+			this.$router.push("/board/" + this.$route.params.board_id + "/tabs/");
+		},
+
 		onCopiedToClickboard(){
 			var comp = this.copiedToClickboardSnackbar;
 			if(comp.timeout != null){
@@ -617,6 +605,14 @@ export default {
 		},
 		onPasswordClick(passwordItem){
 			console.log(passwordItem);
+		},
+
+		onSelectTabChange(){
+			this.loadTabPasswords(this.selectedGroup);
+		},
+
+		onAddPasswordButtonClick(){
+			this.$router.push("/board/" + this.$route.params.board_id + "/password/");
 		}
 	}
 }

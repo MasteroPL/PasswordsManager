@@ -1,8 +1,10 @@
 from typing import Iterable
-from main.models import BoardTab, Board
+from main.models import BoardTab, Board, BoardPassword
 from django.db import transaction
 from django.db.models import Value
-
+from django.conf import settings
+import os
+from os.path import exists
 
 class BoardTabsBuilder:
 
@@ -201,7 +203,7 @@ class BoardTabsBuilder:
         del tmp_list
 
 
-    def delete_tab(self, tab_id:int):
+    def delete_tab(self, tab_id:int, delete_passwords:bool=True, move_to_tab:int=None):
         index = 0
         for item in self.tabs:
             if item.id == tab_id:
@@ -213,7 +215,11 @@ class BoardTabsBuilder:
             if(self.tabs[index].is_default):
                 raise CannotDeleteDefaultTabError()
 
-            self.__delete.append(self.tabs[index].id)
+            self.__delete.append({
+                "tab_id": self.tabs[index].id,
+                "delete_passwords": delete_passwords,
+                "move_to_tab": move_to_tab
+            })
             self.tabs.pop(index)
         else:
             raise BoardTabNotFoundError()
@@ -234,7 +240,37 @@ class BoardTabsBuilder:
 
         with transaction.atomic():
             if len(self.__delete) > 0:
-                BoardTab.objects.filter(id__in=self.__delete).delete()
+                ids = []
+                delete_tab_passwords = []
+                for item in self.__delete:
+                    ids.append(item["tab_id"])
+                    if item["delete_passwords"]:
+                        delete_tab_passwords.append(item["tab_id"])
+                    else:
+                        BoardPassword.objects.filter(
+                            board_tab_id=item["tab_id"]
+                        ).update(board_tab_id=item["move_to_tab"])
+
+                passwords_qs = BoardPassword.objects.filter(
+                    board_tab_id__in=delete_tab_passwords
+                ).prefetch_related("password")
+
+                codes = []
+
+                for item in passwords_qs:
+                    codes.append(item.password.code)
+
+                BoardPassword.objects.filter(board_tab_id__in=delete_tab_passwords).delete()
+                BoardTab.objects.filter(id__in=ids).delete()
+
+                for code in codes:
+                    try:
+                        target_file = os.path.join(settings.PASSWORDS_TARGET_DIRECTORY, code)
+                        if exists(target_file):
+                            os.remove(target_file)
+                    except Exception as e:
+                        pass
+
             if len(create) > 0:
                 BoardTab.objects.bulk_create(create)
             if len(update) > 0:

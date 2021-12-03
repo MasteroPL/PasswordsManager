@@ -331,7 +331,6 @@ export default {
 				payload.delete = this.$data._permissionDelete;
 
 				let response = null;
-				console.log(payload);
 				try {
 					response = await this.$store.dispatch("board/assignUser", payload);
 				} catch(error){

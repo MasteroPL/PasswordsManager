@@ -4,6 +4,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
 import uuid
 import os
+from os.path import exists
 from Crypto.Cipher import AES
 
 from .abstract_models import AuditModel
@@ -118,6 +119,48 @@ class GenericPassword(AuditModel):
 	def read(self):
 		return GenericPassword._read(self)
 
+
+	def remove(self):
+		with transaction.atomic():
+			code = self.code
+			self.delete()
+
+			target_file = os.path.join(settings.PASSWORDS_TARGET_DIRECTORY, code)
+			if exists(target_file):
+				os.remove(target_file)
+
+
+	def change_password(self, password:str, commit:bool=True):
+		if len(password) > 128:
+			raise GenericPassword.PasswordTooLongError("Max password length is 128 characters")
+
+		salt = os.urandom(8) # os.urandom is suitable for cryptographic use
+		full_key = settings.PASSWORDS_HS256_MAIN_KEY + salt
+		cipher = AES.new(full_key, AES.MODE_EAX)
+		nonce = cipher.nonce
+
+		ciphertext, tag = cipher.encrypt_and_digest(password.encode('utf-8'))
+		signature = tag + nonce + salt # 16 bytes, 16 bytes, 8 bytes
+
+		with transaction.atomic():
+			self.signature = signature
+			target_file = target_file = os.path.join(settings.PASSWORDS_TARGET_DIRECTORY, self.code)
+
+			try:
+				with open(target_file, 'wb') as f:
+					f.write(ciphertext)
+
+			except Exception as e:
+				raise GenericPassword.FailedToCreatePasswordFileError(inner_exception=e)
+
+			if commit:
+				try:
+					self.save()
+				except Exception as e:
+					os.remove(target_file)
+					raise e
+
+			return target_file
 
 	class IntegrityError(Exception):
 		'''

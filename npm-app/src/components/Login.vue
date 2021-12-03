@@ -117,12 +117,15 @@
               accessToken: response.access,
               refreshToken: response.refresh
             });
+            this.$store.commit("setUserPayload",
+              userData
+            );
             that.$emit('authorization-data-received', {
               userData: userData,
               accessToken: response.access,
               refreshToken: response.refresh
             });
-            that.$router.push("/passwords/");
+            that.$router.push("/boards/");
           }).catch((error) => {
             if(error.response){
               // Standard error in validation

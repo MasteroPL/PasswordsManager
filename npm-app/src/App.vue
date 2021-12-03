@@ -155,7 +155,6 @@
         <!--<input type="checkbox" v-model="darkMode" />-->
         <router-view
           :userData="userData"
-          @authorization-data-received="handleAuthorizationData"
           @set-tabs="handleSetTabs"
         ></router-view>
       </v-main>
@@ -221,8 +220,7 @@ export default {
     //
   }),
   beforeMount(){
-    this.loadAcessToken();
-    this.loadUserData();
+    this.$store.commit("loadLocalStorage");
     this.handleRedirect();
   },
   mounted() {
@@ -261,6 +259,9 @@ export default {
       }
       this.userData = null;
       delete axios.defaults.headers.common["Authorization"];
+
+      this.$store.commit("clearCaches");
+
       this.$router.push("/login/");
     },
     navigateTo(url){
@@ -271,7 +272,7 @@ export default {
       var path = this.$route.path;
       this.tabs.show = false;
 
-      if(!ALLOW_UNAUTHORIZED.includes(path) && this.userData == null){
+      if(!ALLOW_UNAUTHORIZED.includes(path) && this.$store.getters["userPayload"] == null){
         this.$router.push("/login/");
       }
 
@@ -330,51 +331,51 @@ export default {
         this.mainNavigation.mobileAppBarModel = false;
       }
     },
-    handleAuthorizationData(authorizationData){
-      console.log(authorizationData);
-      localStorage.setItem('jwt_access', authorizationData.accessToken);
-      localStorage.setItem('jwt_refresh', authorizationData.refreshToken);
-      localStorage.setItem('user', JSON.stringify(authorizationData.userData));
+    // handleAuthorizationData(authorizationData){
+    //   console.log(authorizationData);
+    //   localStorage.setItem('jwt_access', authorizationData.accessToken);
+    //   localStorage.setItem('jwt_refresh', authorizationData.refreshToken);
+    //   localStorage.setItem('user', JSON.stringify(authorizationData.userData));
 
-      this.loadUserData(authorizationData.userData);
-    },
-    loadAcessToken(){
-      var token = localStorage.getItem("jwt_access");
-      console.log
+    //   this.loadUserData(authorizationData.userData);
+    // },
+    // loadAcessToken(){
+    //   var token = localStorage.getItem("jwt_access");
+    //   console.log
 
-      if(token != null){
-        // TODO: validate expiration datetime
+    //   if(token != null){
+    //     // TODO: validate expiration datetime
 
-        axios.defaults.headers.common["Authorization"] = "Bearer " + token;
-      }      
-    },
-    loadUserData(data = null){
-      if(data != null){
-        this.userData = data;
-      }
-      else{
-        var stored = localStorage.getItem('user');
-        if(stored != null){
-          this.userData = JSON.parse(stored);
-          console.log(stored);
-        }
-      }
+    //     axios.defaults.headers.common["Authorization"] = "Bearer " + token;
+    //   }      
+    // },
+    // loadUserData(data = null){
+    //   if(data != null){
+    //     this.userData = data;
+    //   }
+    //   else{
+    //     var stored = localStorage.getItem('user');
+    //     if(stored != null){
+    //       this.userData = JSON.parse(stored);
+    //       console.log(stored);
+    //     }
+    //   }
 
-      if(this.userData != null){
-        var initials = "";
-        if(this.userData.firstName != ""){
-          initials += this.userData.firstName[0];
-        }
-        if(this.userData.lastName != ""){
-          initials += this.userData.lastName[0];
-        }
-        initials = initials.toUpperCase();
-        this.userData.initials = initials;
-      }
-      else{
-        this.userData = null;
-      }
-    },
+    //   if(this.userData != null){
+    //     var initials = "";
+    //     if(this.userData.firstName != ""){
+    //       initials += this.userData.firstName[0];
+    //     }
+    //     if(this.userData.lastName != ""){
+    //       initials += this.userData.lastName[0];
+    //     }
+    //     initials = initials.toUpperCase();
+    //     this.userData.initials = initials;
+    //   }
+    //   else{
+    //     this.userData = null;
+    //   }
+    // },
     loadTheme(){
       var value = localStorage.getItem('theme');
       if(value != null && value == "dark"){

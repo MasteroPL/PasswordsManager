@@ -354,7 +354,7 @@ export default {
 
 		tabsModel: null,
 
-		permissionOwner: true,
+		permissionOwner: false,
 
 		details: {
 			submitTimeout: null,
@@ -460,7 +460,7 @@ export default {
 			for(let i = 0; i < this.users.items.length; i++){
 				item = this.users.items[i];
 				obj = {
-					id: item.id,
+					id: item.userId,
 					name: item.username + " (" + item.lastName + " " + item.firstName + ")"
 				};
 				this.details.boardOwner.choices.push(obj);
@@ -513,6 +513,10 @@ export default {
 		},
 
 		assignData(boardData, adminData) {
+			var userId = this.$store.getters["userPayload"].id;
+
+			this.permissionOwner = (userId == adminData.owner.id);
+
 			this.details.boardName.initial = boardData.name;
 			this.details.boardName.current = boardData.name;
 			this.details.boardDescription.initial = boardData.description;
@@ -657,6 +661,7 @@ export default {
 				&& this.permissionOwner
 				&& this.details.boardOwner.current != this.details.boardOwner.initial.id
 			){
+				console.log(this.details.boardOwner);
 				data.ownerId = this.details.boardOwner.current;
 				anyChanges = true;
 			}

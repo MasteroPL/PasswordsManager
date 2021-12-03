@@ -10,13 +10,14 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 from rest_framework import serializers, status, generics
 from main.commons import serialization_errors_to_response
-from django.db.models import CharField, Value as V
+from django.db.models import CharField, Value as V, Count
 from django.db.models.functions import Concat
 from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError as CoreValidationError
 from django.db import transaction
 
-from main.models.board_passwords_models import BoardTab, BoardUserAssignment
+from main.models.board_passwords_models import BoardPassword, BoardTab, BoardUserAssignment
+from main.models.generic_models import GenericPassword
 from main.utils.board_tabs_builder import (
     BoardTabsBuilder,
     BoardTabNotFoundError,
@@ -43,7 +44,11 @@ from .boards_serializers import (
     BoardTabsAPIGetResponseSerializer,
     BoardTabsAPIPostRequestSerializer,
     BoardTabAPIPatchRequestSerializer,
-    BoardAssignmentsUsersSearchAPIGetRequestSerializer
+    BoardAssignmentsUsersSearchAPIGetRequestSerializer,
+    BoardPasswordsAPIPostRequestSerializer,
+    BoardPasswordAPIResponseSerializer,
+    BoardTabAPIDeleteRequestSerializer,
+    BoardPasswordsAPIPatchRequestSerializer
 )
 
 # ------------------
@@ -158,7 +163,8 @@ class BoardsAPI(GenericAPIView):
             default_tab = BoardTab(
                 board=obj,
                 name=data["default_tab_name"] if data["default_tab_name"] is not None else "Default tab",
-                board_order=1
+                board_order=1,
+                is_default=True
             )
 
             try:
@@ -243,6 +249,12 @@ class BoardAPI(GenericAPIView):
                     )
                 )
                 serializer_fields.append("tabs")
+                serializer_fields.append(
+                    Prefetch(
+                        "tabs__tab_passwords",
+                        queryset=BoardPassword.objects.order_by("password__title")
+                    )
+                )
             
 
             qs_no_admin, qs_admin = self.get_queryset(admin_required=True)
@@ -324,7 +336,6 @@ class BoardAPI(GenericAPIView):
                 if obj.owner != request.user:
                     return Response(status=status.HTTP_403_FORBIDDEN)
 
-                data["owner"] = data["owner_id"]
                 data.pop("owner_id")
 
                 if obj.owner_id != data["owner"].id:
@@ -794,7 +805,13 @@ class BoardTabsAPI(GenericAPIView):
 
         qs = BoardTab.objects.filter(
             board_id=board_id
+        ).prefetch_related(
+            Prefetch(
+                "tab_passwords",
+                queryset=BoardPassword.objects.order_by("password__title")
+            )
         ).order_by("board_order")
+
         response = BoardTabsAPIGetResponseSerializer(instance=qs, many=True)
 
         return Response(data=response.data, status=status.HTTP_200_OK)
@@ -824,7 +841,13 @@ class BoardTabsAPI(GenericAPIView):
                 builder.prepend_tab(data["name"])
             builder.save()
 
-            objects = BoardTab.objects.filter(board_id=board_id).order_by("board_order")
+            objects = BoardTab.objects.filter(board_id=board_id).prefetch_related(
+                Prefetch(
+                    "tab_passwords",
+                    queryset=BoardPassword.objects.order_by("password__title")
+                )
+            ).order_by("board_order")
+
             response = BoardTabsAPIGetResponseSerializer(instance = objects, many=True)
             return Response(data=response.data, status=status.HTTP_201_CREATED)
 
@@ -871,6 +894,11 @@ class BoardTabAPI(GenericAPIView):
             obj = BoardTab.objects.get(
                 id=tab_id,
                 board_id=board_id
+            ).prefetch_related(
+                Prefetch(
+                    "tab_passwords",
+                    queryset=BoardPassword.objects.order_by("password__title")
+                )
             )
         except BoardTab.DoesNotExist:
             raise Http404()
@@ -908,7 +936,12 @@ class BoardTabAPI(GenericAPIView):
 
             builder.save()
 
-            tabs = BoardTab.objects.filter(board_id=board_id).order_by("board_order")
+            tabs = BoardTab.objects.filter(board_id=board_id).prefetch_related(
+                Prefetch(
+                    "tab_passwords",
+                    queryset=BoardPassword.objects.order_by("password__title")
+                )
+            ).order_by("board_order")
 
             response = BoardTabsAPIGetResponseSerializer(instance=tabs, many=True)
             return Response(data=response.data, status=status.HTTP_200_OK)
@@ -922,18 +955,193 @@ class BoardTabAPI(GenericAPIView):
         if not self.verify_permissions(board_id):
             return Response(status=status.HTTP_403_FORBIDDEN)
 
-        builder = BoardTabsBuilder(board_id)
+        serializer = BoardTabAPIDeleteRequestSerializer(board_id, data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            builder = BoardTabsBuilder(board_id)
+            try:
+                builder.delete_tab(tab_id, delete_passwords=data["remove_passwords"], move_to_tab=data["move_passwords_to_tab_id"])
+            except BoardTabNotFoundError:
+                raise Http404()
+            except CannotDeleteDefaultTabError:
+                return Response({
+                    "detail": "Cannot delete default tab",
+                    "code": "cannot_delete_default"
+                })
+
+            builder.save()
+
+            tabs = BoardTab.objects.filter(board_id=board_id).prefetch_related(
+                Prefetch(
+                    "tab_passwords",
+                    queryset=BoardPassword.objects.order_by("password__title")
+                )
+            ).order_by("board_order")
+            response = BoardTabsAPIGetResponseSerializer(instance=tabs, many=True)
+            return Response(data=response.data, status=status.HTTP_200_OK)
+
+        errors = serialization_errors_to_response(serializer.errors)
+        return Response(data=errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+#
+# Board passwords
+#
+
+class BoardPasswordsAPI(GenericAPIView):
+
+    def post(self, request, board_id:int, format=None):
+        
+        board = None
         try:
-            builder.delete_tab(tab_id)
-        except BoardTabNotFoundError:
+            board = Board.objects.get(id=board_id)
+        except Board.DoesNotExist():
             raise Http404()
-        except CannotDeleteDefaultTabError:
-            return Response({
-                "detail": "Cannot delete default tab",
-                "code": "cannot_delete_default"
-            })
 
-        builder.save()
+        try:
+            permissions = board.get_user_permissions(request.user)
+        except BoardUserAssignment.DoesNotExist:
+            raise Http404()
 
-        response = BoardTabsAPIGetResponseSerializer(instance=builder.tabs, many=True)
-        return Response(data=response.data, status=status.HTTP_204_NO_CONTENT)
+        if not permissions["create"]:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        serializer = BoardPasswordsAPIPostRequestSerializer(board.id, data=request.data)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            board_password, generic_password = BoardPassword.create(
+                board.id,
+                board_tab_id=data["board_tab_id"],
+                password=data["password"],
+                title=data["title"],
+                description=data["description"],
+                url=data["url"],
+                username=data["username"]
+            )
+
+            response = BoardPasswordAPIResponseSerializer(instance=board_password)
+            return Response(data=response.data, status=status.HTTP_201_CREATED)
+
+        errors = serialization_errors_to_response(serializer.errors)
+        return Response(data=errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+    
+class BoardPasswordAPI(GenericAPIView):
+
+    def get(self, request, board_id:int, password_code:str, format=None):
+        try:
+            Board.get_board_user_permissions(board_id, request.user.id)
+        except BoardUserAssignment.DoesNotExist:
+            raise Http404()
+        
+        try:
+            obj = BoardPassword.objects.select_related("password").get(
+                board_id=board_id,
+                password__code=password_code
+            )
+        except BoardPassword.DoesNotExist:
+            raise Http404()
+
+        response = BoardPasswordAPIResponseSerializer(instance=obj)
+        return Response(data=response.data, status=status.HTTP_200_OK)
+
+
+    def patch(self, request, board_id:int, password_code:str, format=None):
+        try:
+            permissions = Board.get_board_user_permissions(board_id, request.user.id)
+        except BoardUserAssignment.DoesNotExist:
+            raise Http404()
+        
+        try:
+            obj = BoardPassword.objects.select_related("password").get(
+                board_id=board_id,
+                password__code=password_code
+            )
+        except BoardPassword.DoesNotExist:
+            raise Http404()
+
+        if not permissions["update"]:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        serializer = BoardPasswordsAPIPatchRequestSerializer(board_id, data=request.data, partial=True)
+        if serializer.is_valid():
+            data = serializer.validated_data
+
+            password_obj = obj.password
+
+            new_password_provided = False
+            new_password = None
+            if data.__contains__("password"):
+                new_password_provided = True
+                new_password = data.pop("password")
+
+            new_board_tab_id_provided = False
+            new_board_tab_id = None
+            if data.__contains__("board_tab_id"):
+                new_board_tab_id_provided = True
+                new_board_tab_id = data.pop("board_tab_id")
+
+            with transaction.atomic():
+                for key, value in data.items():
+                    setattr(password_obj, key, value)
+
+                if new_password_provided:
+                    password_obj.change_password(new_password, commit=False)
+                if new_board_tab_id_provided:
+                    obj.board_tab_id = new_board_tab_id
+
+                password_obj.save()
+                obj.save()
+
+            response = BoardPasswordAPIResponseSerializer(instance=obj)
+            return Response(data=response.data, status=status.HTTP_200_OK)
+
+        errors = serialization_errors_to_response(serializer.errors)
+        return Response(data=errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+    def delete(self, request, board_id:int, password_code:str, format=None):
+        try:
+            permissions = Board.get_board_user_permissions(board_id, request.user.id)
+        except BoardUserAssignment.DoesNotExist:
+            raise Http404()
+        
+        try:
+            obj = BoardPassword.objects.select_related("password").get(
+                board_id=board_id,
+                password__code=password_code
+            )
+        except BoardPassword.DoesNotExist:
+            raise Http404()
+
+
+        if not permissions["delete"]:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        obj.remove()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+        
+
+class BoardPasswordCopyAPI(GenericAPIView):
+
+    def post(self, request, board_id:int, password_code:str, format=None):
+        try:
+            permissions = Board.get_board_user_permissions(board_id, request.user.id)
+        except BoardUserAssignment.DoesNotExist:
+            raise Http404()
+        
+        try:
+            obj = BoardPassword.objects.select_related("password").get(
+                board_id=board_id,
+                password__code=password_code
+            )
+        except BoardPassword.DoesNotExist:
+            raise Http404()
+
+        if not permissions["read"]:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        return Response(data=obj.password.read(), status=status.HTTP_200_OK)

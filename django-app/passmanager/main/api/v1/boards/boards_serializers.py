@@ -2,8 +2,29 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework.exceptions import ErrorDetail
 from main.models import Board, BoardTab, BoardUserAssignment
+from main.models.board_passwords_models import BoardPassword
+from main.models.generic_models import GenericPassword
 
+class BoardPasswordAPIResponseSerializer(serializers.Serializer):
+    class _BoardPasswordAPIResponsePasswordSerializer(serializers.ModelSerializer):
+        class Meta:
+            model=GenericPassword
+            fields=(
+                "title",
+                "description",
+                "url",
+                "username",
+                "code"
+            )
 
+    password = _BoardPasswordAPIResponsePasswordSerializer()
+
+    class Meta:
+        model=BoardPassword
+        fields=(
+            "password",
+            "board_tab"
+        )
 
 # ---------
 # BoardsAPI
@@ -167,12 +188,15 @@ class BoardAPIGetResponseSerializer(serializers.ModelSerializer):
             else:
                 return False
 
+        tab_passwords = BoardPasswordAPIResponseSerializer(many=True)
+
         class Meta:
             model=BoardTab
             fields=(
                 "id",
                 "name",
-                "is_default"
+                "is_default",
+                "tab_passwords"
             )
 
     class _BoardAPIGetResponsePermissionsSerializer(serializers.Serializer):
@@ -494,7 +518,6 @@ class BoardAssignmentsUsersSearchAPIGetResponseSerializer(serializers.ModelSeria
 # BoardTabs API 
 # -------------
 
-
 class BoardTabsAPIGetResponseSerializer(serializers.ModelSerializer):
 
     is_default = serializers.SerializerMethodField()
@@ -503,12 +526,14 @@ class BoardTabsAPIGetResponseSerializer(serializers.ModelSerializer):
             return True
         return False
 
+    tab_passwords = BoardPasswordAPIResponseSerializer(many=True)
     class Meta:
         model=BoardTab
         fields=(
             "id",
             "name",
-            "is_default"
+            "is_default",
+            "tab_passwords"
         )
 
 class BoardTabsAPIPostRequestSerializer(serializers.ModelSerializer):
@@ -569,5 +594,117 @@ class BoardTabAPIPatchRequestSerializer(serializers.ModelSerializer):
                     code="tab_not_found"
                 )
             })
+
+        return data
+
+class BoardTabAPIDeleteRequestSerializer(serializers.Serializer):
+    
+    def __init__(self, board_id:int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.board_id = board_id
+
+    remove_passwords = serializers.BooleanField(required=False, default=True)
+    move_passwords_to_tab_id = serializers.IntegerField(required=False, default=None)
+
+    def validate(self, data):
+        data = super().validate(data)
+
+        if not data["remove_passwords"]:
+            if data["move_passwords_to_tab_id"] is None:
+                raise serializers.ValidationError({
+                    "move_passwords_to_tab_id": ErrorDetail(
+                        "If remove_passwords is False, this field is required",
+                        code="conditionally_required"
+                    )
+                })
+
+            try:
+                data["move_passwords_to_tab"] = BoardTab.objects.get(
+                    board_id=self.board_id,
+                    id=data["move_passwords_to_tab_id"]
+                )
+            except BoardTab.DoesNotExist:
+                raise serializers.ValidationError({
+                    "move_passwords_to_tab_id": ErrorDetail(
+                        "Tab not found",
+                        code="not_found"
+                    )
+                })
+
+        return data
+
+
+
+class BoardPasswordsAPIPostRequestSerializer(serializers.Serializer):
+
+    def __init__(self, board_id:int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.board_id = board_id
+
+    password=serializers.CharField(max_length=128, required=True)
+    title=serializers.CharField(max_length=50, required=True)
+    description=serializers.CharField(max_length=1000, required=False, allow_null=True, default=None)
+    url=serializers.CharField(max_length=100, required=False, allow_null=True, default=None)
+    username=serializers.CharField(max_length=100, required=False, allow_null=True, default=None)
+
+    board_tab_id=serializers.IntegerField(required=True)
+
+    def validate(self, data):
+        data = super().validate(data)
+
+        try:
+            obj = BoardTab.objects.get(
+                board_id=self.board_id,
+                id=data["board_tab_id"]
+            )
+        except BoardTab.DoesNotExist:
+            raise serializers.ValidationError({
+                "board_tab_id": ErrorDetail(
+                    "Board tab has not been found",
+                    code="not_found"
+                )
+            })
+
+        data["board_tab"] = obj
+
+        return data
+
+
+
+class BoardPasswordsAPIPatchRequestSerializer(serializers.Serializer):
+
+    def __init__(self, board_id:int, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.board_id = board_id
+
+    password=serializers.CharField(max_length=128)
+    title=serializers.CharField(max_length=50)
+    description=serializers.CharField(max_length=1000, allow_null=True)
+    url=serializers.CharField(max_length=100, allow_null=True)
+    username=serializers.CharField(max_length=100, allow_null=True)
+
+    board_tab_id=serializers.IntegerField(allow_null=True)
+
+    def validate(self, data):
+        data = super().validate(data)
+
+        if data.__contains__("board_tab_id"):
+            try:
+                obj = BoardTab.objects.get(
+                    board_id=self.board_id,
+                    id=data["board_tab_id"]
+                )
+            except BoardTab.DoesNotExist:
+                raise serializers.ValidationError({
+                    "board_tab_id": ErrorDetail(
+                        "Board tab has not been found",
+                        code="not_found"
+                    )
+                })
+
+            data["board_tab"] = obj
 
         return data

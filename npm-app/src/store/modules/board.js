@@ -6,10 +6,50 @@ const API_BOARD = "api/v1/board/%%BOARD_ID%%";
 const API_BOARD_USER_SEARCH = "api/v1/board/%%BOARD_ID%%/assignments/search-user/";
 const API_BOARD_ASSIGNMENTS = "api/v1/board/%%BOARD_ID%%/assignments/";
 const API_BOARD_ASSIGNMENT = "api/v1/board/%%BOARD_ID%%/assignment/%%ASSIGNMENT_ID%%";
+const API_BOARD_TABS = "api/v1/board/%%BOARD_ID%%/tabs/";
+const API_BOARD_TAB = "api/v1/board/%%BOARD_ID%%/tab/%%TAB_ID%%";
+const API_BOARD_PASSWORDS = "api/v1/board/%%BOARD_ID%%/passwords/";
+const API_BOARD_PASSWORD = "api/v1/board/%%BOARD_ID%%/password/%%PASSWORD_CODE%%";
+
+function adaptBoardTabPasswordsResponseData(response){
+    let item = null;
+    let result = [];
+    let obj = null;
+    for(let i = 0; i < response.length; i++){
+        item = response[i].password;
+        obj = {
+            title: item.title,
+            description: item.description,
+            url: item.url,
+            username: item.username,
+            code: item.code
+        };
+        result.push(obj);
+    }
+
+    return result;
+}
+
+function adaptBoardTabsResponseData(response){
+    let tabs = [];
+    let item = null;
+    let tab = null;
+    for(let i = 0; i < response.length; i++){
+        item = response[i];
+        tab = {
+            id: item.id,
+            name: item.name,
+            isDefault: item.is_default,
+            passwords: adaptBoardTabPasswordsResponseData(item.tab_passwords)
+        };
+        tabs.push(tab);
+    }
+
+    return tabs;
+}
 
 function adaptBoardResponseData(response){
     let item;
-    let tab;
     let result = {
         board: null,
         admin: null
@@ -32,18 +72,9 @@ function adaptBoardResponseData(response){
             update: response.permissions.update,
             delete: response.permissions.delete
         },
-        tabs: [],
+        tabs: null,
     };
-    for(let i = 0; i < response.tabs.length; i++){
-        item = response.tabs[i];
-        tab = {
-            id: item.id,
-            name: item.name,
-            isDefault: item.is_default,
-            passwords: [] // TODO
-        };
-        result.board.tabs.push(tab);
-    }
+    result.board.tabs = adaptBoardTabsResponseData(response.tabs);
 
     if(typeof(response.owner) !== 'undefined' && response.owner != null && typeof(response.users) !== 'undefined' && response.users != null){
         let user;
@@ -77,6 +108,8 @@ function adaptBoardResponseData(response){
 
     return result;
 }
+
+
 
 function adaptBoardUserSearchData(response){
     let result = [];
@@ -142,6 +175,16 @@ function sortByUsernameCompare(a, b){
 	return 0;
 }
 
+function sortByTitleCompare(a, b){
+	if(a.title < b.title){
+		return -1;
+	}
+	else if(a.title > b.title){
+		return 1;
+	}
+	return 0;
+}
+
 export default {
     namespaced: true,
 
@@ -166,7 +209,7 @@ export default {
         //             isDefault: {Boolean},
         //             passwords: [
         //                 {
-        //                     id: {Number},
+        //                     code: {String},
         //                     title: {String},
         //                     username: {String},
         //                     url: {String},
@@ -204,6 +247,10 @@ export default {
     getters: {
         getBoard: (state) => {
             return state.board;
+        },
+
+        getTabs: (state) => {
+            return state.board.tabs.sort(sortByTitleCompare);
         },
 
         getSortedUsers: (state) => {
@@ -344,6 +391,22 @@ export default {
                     }
                 }
             }
+        },
+        newTabsCache(state, payload){
+            if(state.board != null && state.board.id == payload.boardId){
+                state.board.tabs = payload.tabs;
+            }
+        },
+        addPasswordToTab(state, payload){
+            if(state.board != null && state.board.id == payload.boardId){
+                let id = payload.tabId;
+                for(let i = 0; i < state.board.tabs.length; i++){
+                    if(state.board.tabs[i].id == id){
+                        state.board.tabs[i].passwords.push(payload.password);
+                        break;
+                    }
+                }
+            }
         }
     },
     actions: {
@@ -355,7 +418,7 @@ export default {
          *      id: {Number}, // board id
          * }
          */
-        async getData({commit, rootState, rootGetters}, payload){
+        async getData({state, commit, rootState, rootGetters}, payload){
             if(typeof(payload.id) === 'undefined'){
                 throw {
                     type: ERRORS.VALIDATION,
@@ -365,6 +428,12 @@ export default {
                             code: "required"
                         }
                     }
+                };
+            }
+            if(typeof(payload.allowCache) !== 'undefined' && payload.allowCache && state.board != null){
+                return {
+                    board: state.board,
+                    admin: state.admin
                 };
             }
 
@@ -858,6 +927,449 @@ export default {
                 boardId: payload.boardId,
                 assignmentId: payload.assignmentId
             });
+        },
+
+        /**
+         * Adds a new tab to the list
+         * @param {*} param0 Provided by Vuex
+         * @param {Object} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      tabName: {String},
+         *      [addAfter]: {Number}
+         * }
+         */
+        async addTab({commit, rootState, rootGetters}, payload) {
+            let requiredFields = [
+                "boardId", "tabName"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let addAfter = null;
+            if(typeof(payload.addAfter) !== 'undefined'){
+                addAfter = payload.addAfter;
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            let response = null;
+            try {
+                response = await axios({
+                    method: "POST",
+                    url: rootState.apiUrl + API_BOARD_TABS.replace("%%BOARD_ID%%", payload.boardId),
+                    headers: headers,
+                    data: {
+                        name: payload.tabName,
+                        add_after: addAfter
+                    }
+                });
+            } catch(error) {
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            let newCache = adaptBoardTabsResponseData(response.data);
+
+            commit("newTabsCache", {
+                boardId: payload.boardId,
+                tabs: newCache
+            });
+
+            return newCache;
+        },
+        /**
+         * Edits an existing tab in the list
+         * @param {*} param0 Provided by Vuex
+         * @param {Object} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      tabId: {Number},
+         *      tabName: {String},
+         *      [putAfter]: {Number}
+         * }
+         */
+        async editTab({commit, rootState, rootGetters}, payload) {
+            let requiredFields = [
+                "boardId", "tabId", "tabName"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let putAfter = null;
+            if(typeof(payload.putAfter) !== 'undefined'){
+                putAfter = payload.putAfter;
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            let response = null;
+            try {
+                response = await axios({
+                    method: "PATCH",
+                    url: rootState.apiUrl + API_BOARD_TAB.replace("%%BOARD_ID%%", payload.boardId).replace("%%TAB_ID%%", payload.tabId),
+                    headers: headers,
+                    data: {
+                        name: payload.tabName,
+                        put_after: putAfter
+                    }
+                });
+            } catch(error) {
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            let newCache = adaptBoardTabsResponseData(response.data);
+
+            commit("newTabsCache", {
+                boardId: payload.boardId,
+                tabs: newCache
+            });
+
+            return newCache;
+        },
+        /**
+         * Removes an existing tab
+         * @param {*} param0 Provided by Vuex
+         * @param {Object} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      tabId: {Number},
+         *      removePasswords: {Boolean},
+         *      [movePasswordsTo]: {Number}
+         * }
+         */
+        async removeTab({commit, rootState, rootGetters}, payload) {
+            let requiredFields = [
+                "boardId", "tabId", "removePasswords"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let movePasswordsTo = null;
+            if(!payload.removePasswords && typeof(payload.movePasswordsTo) == 'undefined'){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: {
+                        "movePasswordsTo": {
+                            string: "This field is required if removePasswords is set to true",
+                            errors: "conditionally_required"
+                        }
+                    }
+                };
+            }
+            else if(!payload.removePasswords){
+                movePasswordsTo = payload.movePasswordsTo;
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            let response = null;
+            try {
+                response = await axios({
+                    method: "DELETE",
+                    url: rootState.apiUrl + API_BOARD_TAB.replace("%%BOARD_ID%%", payload.boardId).replace("%%TAB_ID%%", payload.tabId),
+                    headers: headers,
+                    data: {
+                        remove_passwords: payload.removePasswords,
+                        move_passwords_to_tab_id: movePasswordsTo
+                    }
+                });
+            } catch(error) {
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+            
+            let newCache = adaptBoardTabsResponseData(response.data);
+
+            commit("newTabsCache", {
+                boardId: payload.boardId,
+                tabs: newCache
+            });
+
+            return newCache;
+        },
+        /**
+         * Retrieves data about password from cache. If cache is not available, requests new cache
+         * @param {*} param0 
+         * @param {Object} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      passwordCode: {String}
+         * }
+         */
+        async getPasswordData({state, dispatch}, payload){
+            let requiredFields = [
+                "boardId", "passwordCode"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let reloadedBoard = false;
+            if(state.board == null || state.board.id != payload.boardId){
+                await dispatch("getData", {
+                    id: payload.boardId
+                });
+                reloadedBoard = true;
+            }
+
+            let item = null;
+            for(let x = 0; x < 2; x++){
+                for(let i = 0; i < state.board.tabs.length; i++){
+                    for(let j = 0; j < state.board.tabs[i].passwords.length; j++){
+                        item = state.board.tabs[i].passwords[j];
+
+                        if(item.code == payload.passwordCode){
+                            return {
+                                ...item,
+                                tabId: state.board.tabs[i].id
+                            };
+                        }
+                    }
+                }
+
+                if(!reloadedBoard){
+                    // Attempt to find password again after reloading the board, just to be sure it doesn't exist
+                    await dispatch("getData", {
+                        id: payload.boardId
+                    });
+                    reloadedBoard = true;
+                }
+                else{
+                    break;
+                }
+            }
+
+            return null;
+        },
+        /**
+         * Adds new password to the database and updates cache if boardId matches with cached board
+         * @param {*} param0 Provided by Vuex
+         * @param {*} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      boardTabId: {Number},
+         *      password: {String},
+         *      title: {String},
+         *      [description]: {String},
+         *      [url]: {String},
+         *      [username]: {String}
+         * }
+         */
+        async addPassword({commit, rootState, rootGetters}, payload){
+            let requiredFields = [
+                "boardId", "boardTabId", "password", "title"
+            ];
+            let optionalFields = [
+                "description", "url", "username"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            // Filling optional fields with nulls if undefined
+            for(let i = 0; i < optionalFields.length; i++){
+                if(typeof(payload[optionalFields[i]]) === 'undefined'){
+                    payload[optionalFields[i]] = null;
+                }
+                else if(payload[optionalFields[i]] == ""){
+                    payload[optionalFields[i]] = null;
+                }
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            let response = null;
+            try {
+                response = await axios({
+                    method: "POST",
+                    url: rootState.apiUrl + API_BOARD_PASSWORDS.replace("%%BOARD_ID%%", payload.boardId),
+                    headers: headers,
+                    data: {
+                        board_tab_id: payload.boardTabId,
+                        password: payload.password,
+                        title: payload.title,
+                        description: payload.description,
+                        url: payload.url,
+                        username: payload.username
+                    }
+                });
+            } catch(error){
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            let newPassword = adaptBoardTabPasswordsResponseData([ response.data ])[0];
+
+            commit("addPasswordToTab", {
+                boardId: payload.boardId,
+                tabId: payload.boardTabId,
+                password: newPassword
+            });
+
+            return newPassword;
+        },
+        /**
+         * Updates password in the database and updates cache if boardId matches with cached board
+         * @param {*} param0 Provided by Vuex
+         * @param {*} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      passwordCode: {String},
+         *      [boardTabId]: {Number},
+         *      [password]: {String},
+         *      [title]: {String},
+         *      [description]: {String},
+         *      [url]: {String},
+         *      [username]: {String}
+         * }
+         */
+         async updatePassword({rootState, rootGetters}, payload){
+            let requiredFields = [
+                "boardId", "passwordCode"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let data = {};
+            let optionalData = [
+                ["password", "password"], ["title", "title"], ["description", "description"], ["username", "username"], ["url", "url"], ["boardTabId", "board_tab_id"]
+            ];
+
+            for(let i = 0; i < optionalData.length; i++){
+                if(typeof(payload[optionalData[i][0]]) !== 'undefined'){
+                    data[optionalData[i][1]] = payload[optionalData[i][0]];
+                }
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            let response = null;
+            try {
+                response = await axios({
+                    method: "PATCH",
+                    url: rootState.apiUrl + API_BOARD_PASSWORD.replace("%%BOARD_ID%%", payload.boardId).replace("%%PASSWORD_CODE%%", payload.passwordCode),
+                    headers: headers,
+                    data: data
+                });
+            } catch(error){
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            let updatedPassword = adaptBoardTabPasswordsResponseData([ response.data ])[0];
+
+            return updatedPassword;
         }
     }
 

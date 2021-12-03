@@ -1,0 +1,9 @@
+{
+    "version": 3,
+    "mappings": "AAEA,AAAA,4BAA4B,AAAA,eAAe,CAAC;EAC1C,UAAU,EAAE,GAAG;EACf,MAAM,EAAE,IAAI;CACb;;AAED,AAAA,aAAa,CAAA;EACX,KAAK,EAAE,mBAAmB;EAC1B,UAAU,EAAE,MAAM;CACnB",
+    "sources": [
+        "forms-overrides.scss"
+    ],
+    "names": [],
+    "file": "forms-overrides.css"
+}

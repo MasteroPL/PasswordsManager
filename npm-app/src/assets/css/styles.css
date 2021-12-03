@@ -1,0 +1,98 @@
+:root {
+  --app-primary: #263238;
+  --app-primary-light: #4f5b62;
+  --app-primary-dark: #000a12;
+  --app-secondary: #37474f;
+  --app-secondary-light: #62727b;
+  --app-secondary-dark: #102027;
+  --app-text-on-primary: #ffffff;
+  --app-text-on-primary-light: #ffffff;
+  --app-text-on-primary-dark: #ffffff;
+  --app-text-on-secondary: #ffffff;
+  --app-text-on-secondary-light: #ffffff;
+  --app-text-on-secondary-dark: #ffffff;
+  --app-background: #ffffff;
+  --app-background-accent: #f5f5f5;
+  --app-text-on-background: #000000;
+  --app-text-on-background-accent: #000000;
+}
+
+[theme="dark"] {
+  --app-primary: #000a12;
+  --app-primary-light: #263238;
+  --app-primary-dark: #000000;
+  --app-secondary: #263238;
+  --app-secondary-light: #4f5b62;
+  --app-secondary-dark: #000a12;
+  --app-text-on-primary: #ffffff;
+  --app-text-on-primary-light: #ffffff;
+  --app-text-on-primary-dark: #ffffff;
+  --app-text-on-secondary: #ffffff;
+  --app-text-on-secondary-light: #ffffff;
+  --app-text-on-secondary-dark: #ffffff;
+  --app-background: #212121;
+  --app-background-accent: #484848;
+  --app-text-on-background: #ffffff;
+  --app-text-on-background-accent: #ffffff;
+}
+
+:root {
+  --app-primary: #263238;
+  --app-primary-light: #4f5b62;
+  --app-primary-dark: #000a12;
+  --app-secondary: #37474f;
+  --app-secondary-light: #62727b;
+  --app-secondary-dark: #102027;
+  --app-text-on-primary: #ffffff;
+  --app-text-on-primary-light: #ffffff;
+  --app-text-on-primary-dark: #ffffff;
+  --app-text-on-secondary: #ffffff;
+  --app-text-on-secondary-light: #ffffff;
+  --app-text-on-secondary-dark: #ffffff;
+  --app-background: #ffffff;
+  --app-background-accent: #f5f5f5;
+  --app-text-on-background: #000000;
+  --app-text-on-background-accent: #000000;
+}
+
+[theme="dark"] {
+  --app-primary: #000a12;
+  --app-primary-light: #263238;
+  --app-primary-dark: #000000;
+  --app-secondary: #263238;
+  --app-secondary-light: #4f5b62;
+  --app-secondary-dark: #000a12;
+  --app-text-on-primary: #ffffff;
+  --app-text-on-primary-light: #ffffff;
+  --app-text-on-primary-dark: #ffffff;
+  --app-text-on-secondary: #ffffff;
+  --app-text-on-secondary-light: #ffffff;
+  --app-text-on-secondary-dark: #ffffff;
+  --app-background: #212121;
+  --app-background-accent: #484848;
+  --app-text-on-background: #ffffff;
+  --app-text-on-background-accent: #ffffff;
+}
+
+.application .navigation-side {
+  width: 256px;
+  position: fixed;
+  top: 0;
+}
+
+.v-input--selection-controls.dense-checkbox {
+  margin-top: 4px;
+  height: 34px;
+}
+
+.global-error {
+  color: var(--v-error-base);
+  text-align: center;
+}
+
+html {
+  height: 100%;
+  margin: 0;
+  background-color: var(--app-background);
+}
+/*# sourceMappingURL=styles.css.map */

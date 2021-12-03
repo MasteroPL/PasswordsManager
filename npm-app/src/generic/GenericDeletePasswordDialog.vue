@@ -44,8 +44,9 @@ export default {
 	name: "GenericDeletePasswordDialog",
 	props: {
 		passwordId: {
-			type: Number,
-			required: true
+			type: String,
+			required: false,
+			default: null
 		}
 	},
 
