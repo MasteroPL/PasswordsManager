@@ -32,6 +32,8 @@ class Board(AuditModel):
         if len(assignment) == 0:
             raise BoardUserAssignment.DoesNotExist()
 
+        assignment = assignment[0]
+
         if assignment.perm_admin:
             return {
                 "create": True,

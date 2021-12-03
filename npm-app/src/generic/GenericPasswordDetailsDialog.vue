@@ -148,6 +148,7 @@
 		<GenericDeletePasswordDialog
 			ref="GenericDeletePasswordDialog"
 			:passwordId="passwordId"
+			@deleted="onDeleted()"
 		></GenericDeletePasswordDialog>
 	</div>
 </template>
@@ -288,7 +289,7 @@ export default {
 			}, 750);
 		},
 
-		onPasswordDialogPasswordCopyClick(){
+		async onPasswordDialogPasswordCopyClick(){
 			if(this.passwordCopyLoader){
 				return;
 			}
@@ -301,19 +302,24 @@ export default {
 			var requestId = (++this.requestId);
 
 			this.passwordCopyLoader = true;
-			// TODO: download password
-			// For now timeout to simulate
 			var that = this;
-			setTimeout(function(){
-				if(requestId == that.requestId){
-					that.passwordCopyLoader = false;
-					
-					navigator.clipboard.writeText("PASSWORD123!");
-					that.passwordCopyTimeout = setTimeout(function(){
-						that.passwordCopyTimeout = null;
-					}, 750);
+
+			let passwordValue = await this.$store.dispatch("board/getPasswordValue", {
+				boardId: this.$route.params.board_id,
+				passwordCode: this.passwordId
+			});
+
+			if(requestId == this.requestId){
+				if (this.passwordCopyTimeout != null){
+					clearTimeout(this.passwordCopyTimeout);
 				}
-			}, 2000);			
+				this.passwordCopyLoader = false;
+				
+				navigator.clipboard.writeText(passwordValue);
+				this.passwordCopyTimeout = setTimeout(function(){
+					that.passwordCopyTimeout = null;
+				}, 750);
+			}		
 		},
 
 		onPasswordDialogUrlCopyClick(){
@@ -334,6 +340,12 @@ export default {
 
 		onDeleteClick(){
 			this.$refs.GenericDeletePasswordDialog.open();
+		},
+
+		onDeleted(){
+			this.$emit("deleted");
+
+			this.close();
 		}
 	}
 }

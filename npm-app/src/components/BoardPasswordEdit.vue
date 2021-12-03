@@ -351,7 +351,7 @@ export default {
 					boardId: this.$route.params.board_id,
 					passwordCode: this.$route.params.password_id,
 					boardTabId: this.selectedTab,
-					password: (this.passwordUnlocked) ? this.password : undefined,
+					password: (this.passwordUnlocked && this.password != null && this.password != '') ? this.password : undefined,
 					title: this.title,
 					description: this.notes,
 					url: this.url,

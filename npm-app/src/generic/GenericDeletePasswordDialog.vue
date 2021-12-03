@@ -32,6 +32,7 @@
 					color="red"
 					text
 					:disabled="loader"
+					@click="onSubmit()"
 				>Delete</v-btn>
 			</v-card-actions>
 		</v-card>
@@ -62,6 +63,17 @@ export default {
 		},
 		close() {
 			this.model = false;
+		},
+
+		async onSubmit(){
+			await this.$store.dispatch("board/deletePassword", {
+				boardId: this.$route.params.board_id,
+				passwordCode: this.passwordId
+			});
+
+			this.$emit("deleted");
+
+			this.close();
 		}
 	}
 }

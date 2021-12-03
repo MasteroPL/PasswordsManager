@@ -170,8 +170,8 @@
 							>
 								{{ item.username }}
 							</div>
-							<div class="board-desktop-right__item-div clickable"
-								v-ripple
+							<div :class="(board.permissions.read) ? 'board-desktop-right__item-div clickable' : 'board-desktop-right__item-div'"
+								:v-ripple="board.permissions.read"
 								@click="onPasswordClick(item)"
 							>
 								<span v-if="!item.passwordLoader">************</span>
@@ -265,9 +265,11 @@
 			:permissionRead="board != null && board.permissions.read"
 			:permissionUpdate="board != null && board.permissions.update"
 			:permissionDelete="board != null && board.permissions.delete"
+
+			@deleted="getData(true)"
 		></GenericPasswordDetailsDialog>
 
-		<v-snackbar
+	<v-snackbar
       v-model="copiedToClickboardSnackbar.model"
     >
       <v-icon small style="padding-right: 10px">mdi-check</v-icon> Value copied to clipboard
@@ -430,7 +432,8 @@ export default {
 					notes: passwords[i].description,
 					username: passwords[i].username,
 					url: passwords[i].url,
-					passwordLoader: false
+					passwordLoader: false,
+					passwordLoaderTimeout: null
 				});
 			}
 		},
@@ -456,7 +459,7 @@ export default {
 			console.log(board.tabs);
 		},
 
-		async getData(){
+		async getData(allowCache=false){
 			var that = this;
 			if(this.getDataTimeout != null){
 				clearTimeout(this.getDataTimeout);
@@ -466,12 +469,11 @@ export default {
 				that.getDataTimeout = null;
 			}, 200);
 
-			console.log("TEST");
-
 			let exception = false;
 			try {
 				await this.$store.dispatch("board/getData", {
-					id: this.$route.params.board_id
+					id: this.$route.params.board_id,
+					allowCache: allowCache
 				});
 			} catch(error){
 				exception = true;
@@ -603,8 +605,30 @@ export default {
 			navigator.clipboard.writeText(passwordItem.url);
 			this.onCopiedToClickboard();
 		},
-		onPasswordClick(passwordItem){
-			console.log(passwordItem);
+		async onPasswordClick(passwordItem){
+			if(this.board.permissions.read){
+				if(passwordItem.passwordLoaderTimeout != null){
+					clearTimeout(passwordItem.passwordLoaderTimeout);
+				}
+				passwordItem.passwordLoaderTimeout = setTimeout(function(){
+					passwordItem.passwordLoader = true;
+					passwordItem.passwordLoaderTimeout = null;
+				}, 200);
+
+				let passwordValue = await this.$store.dispatch("board/getPasswordValue", {
+					boardId: this.$route.params.board_id,
+					passwordCode: passwordItem.id
+				});
+
+				if(passwordItem.passwordLoaderTimeout != null){
+					clearTimeout(passwordItem.passwordLoaderTimeout);
+				}
+				passwordItem.passwordLoader = false;
+				passwordItem.passwordLoaderTimeout = null;
+
+				navigator.clipboard.writeText(passwordValue);
+				this.onCopiedToClickboard();
+			}
 		},
 
 		onSelectTabChange(){

@@ -58,7 +58,7 @@
             PassManager
           </v-list-item-title>
           <v-list-item-subtitle>
-            Z nami Twoje hasła są bezpieczne
+            Your passwords are safe with us
           </v-list-item-subtitle>
         </v-list-item-content>
       </v-list-item>
@@ -73,7 +73,7 @@
 
         <v-list-item-content>
           <v-list-item-title>{{ (userData != null && userData.firstName != "") ? userData.firstName + " " : "" }}{{ (userData != null && userData.lastName != "") ? userData.lastName : "" }}</v-list-item-title>
-          <v-list-item-subtitle>Zalogowany</v-list-item-subtitle>
+          <v-list-item-subtitle>Logged in</v-list-item-subtitle>
         </v-list-item-content>
       </v-list-item>
 
@@ -84,7 +84,7 @@
         dense
         style="padding-top: 0"
       >
-        <v-subheader>OGÓLNE</v-subheader>
+        <v-subheader>GENERAL</v-subheader>
         <v-list-item-group
           v-model="mainNavigation.selected"
           dark
@@ -98,7 +98,7 @@
               <v-icon>mdi-lock</v-icon>
             </v-list-item-icon>
             <v-list-item-content>
-              <v-list-item-title>LISTA HASEŁ</v-list-item-title>
+              <v-list-item-title>PASSWORDS LIST</v-list-item-title>
             </v-list-item-content>
           </v-list-item>
 
@@ -112,13 +112,13 @@
               <v-icon>mdi-view-dashboard</v-icon>
             </v-list-item-icon>
             <v-list-item-content>
-              <v-list-item-title>TABLICE</v-list-item-title>
+              <v-list-item-title>BOARDS</v-list-item-title>
             </v-list-item-content>
           </v-list-item>
 
           <v-divider></v-divider>
 
-          <v-subheader>KONTO</v-subheader>
+          <v-subheader>ACCOUNT</v-subheader>
 
           <!-- My profile -->
           <v-list-item
@@ -128,7 +128,7 @@
               <v-icon>mdi-account</v-icon>
             </v-list-item-icon>
             <v-list-item-content>
-              <v-list-item-title>MÓJ PROFIL</v-list-item-title>
+              <v-list-item-title>MY PROFILE</v-list-item-title>
             </v-list-item-content>
           </v-list-item>
 
@@ -141,7 +141,7 @@
               <v-icon>mdi-logout</v-icon>
             </v-list-item-icon>
             <v-list-item-content>
-              <v-list-item-title>WYLOGUJ</v-list-item-title>
+              <v-list-item-title>LOG OUT</v-list-item-title>
             </v-list-item-content>
           </v-list-item>
           
@@ -225,6 +225,18 @@ export default {
   },
   mounted() {
     this.loadTheme();
+
+    let userPayload = this.$store.getters["userPayload"];
+
+    let lastNameInitial = (userPayload.lastName != null) ? userPayload.lastName[0] : '';
+    let firstNameInitial = (userPayload.firstName != null) ? userPayload.firstName[0] : '';
+
+    this.userData = {
+      initials: (userPayload.lastName == null && userPayload.firstName == null) ? "##" : firstNameInitial + lastNameInitial,
+      firstName: userPayload.firstName,
+      lastName: userPayload.lastName,
+      id: userPayload.id
+    };
   },
 
   created() {

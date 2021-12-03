@@ -10,6 +10,7 @@ const API_BOARD_TABS = "api/v1/board/%%BOARD_ID%%/tabs/";
 const API_BOARD_TAB = "api/v1/board/%%BOARD_ID%%/tab/%%TAB_ID%%";
 const API_BOARD_PASSWORDS = "api/v1/board/%%BOARD_ID%%/passwords/";
 const API_BOARD_PASSWORD = "api/v1/board/%%BOARD_ID%%/password/%%PASSWORD_CODE%%";
+const API_BOARD_PASSWORD_COPY = "api/v1/board/%%BOARD_ID%%/password/%%PASSWORD_CODE%%/copy/";
 
 function adaptBoardTabPasswordsResponseData(response){
     let item = null;
@@ -404,6 +405,19 @@ export default {
                     if(state.board.tabs[i].id == id){
                         state.board.tabs[i].passwords.push(payload.password);
                         break;
+                    }
+                }
+            }
+        },
+
+        deletePassword(state, payload){
+            if(state.board != null && state.board.id == payload.boardId){
+                for(let i = 0; i < state.board.tabs.length; i++){
+                    for(let j = 0; j < state.board.tabs[i].passwords.length; j++){
+                        if(state.board.tabs[i].passwords[j].code == payload.passwordCode){
+                            state.board.tabs[i].passwords.splice(j, 1);
+                            return;
+                        }
                     }
                 }
             }
@@ -1315,7 +1329,7 @@ export default {
          *      [username]: {String}
          * }
          */
-         async updatePassword({rootState, rootGetters}, payload){
+        async updatePassword({rootState, rootGetters}, payload){
             let requiredFields = [
                 "boardId", "passwordCode"
             ];
@@ -1370,6 +1384,110 @@ export default {
             let updatedPassword = adaptBoardTabPasswordsResponseData([ response.data ])[0];
 
             return updatedPassword;
+        },
+        /**
+         * Deletes password and it's data from the server
+         * @param {*} param0 Provided by Vuex
+         * @param {*} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      passwordCode: {String}
+         * }
+         */
+        async deletePassword({commit, rootState, rootGetters}, payload){
+            let requiredFields = [
+                "boardId", "passwordCode"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            try {
+                await axios({
+                    method: "DELETE",
+                    url: rootState.apiUrl + API_BOARD_PASSWORD.replace("%%BOARD_ID%%", payload.boardId).replace("%%PASSWORD_CODE%%", payload.passwordCode),
+                    headers: headers
+                });
+            } catch(error){
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            commit("deletePassword", {
+                boardId: payload.boardId,
+                passwordCode: payload.passwordCode
+            });
+        },
+        /**
+         * Retrieves password value from the server
+         * @param {*} param0 Provided by Vuex
+         * @param {*} payload Required format:
+         * {
+         *      boardId: {Number},
+         *      passwordCode: {String}
+         * }
+         */
+        async getPasswordValue({rootState, rootGetters}, payload){
+            let requiredFields = [
+                "boardId", "passwordCode"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            let response = null;
+            try {
+                response = await axios({
+                    method: "POST",
+                    url: rootState.apiUrl + API_BOARD_PASSWORD_COPY.replace("%%BOARD_ID%%", payload.boardId).replace("%%PASSWORD_CODE%%", payload.passwordCode),
+                    headers: headers
+                });
+            } catch(error){
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            return response.data;
         }
     }
 
