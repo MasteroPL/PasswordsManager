@@ -5,7 +5,11 @@ from main.models import (
 	Board,
 	BoardUserAssignment,
 	BoardTab,
-	BoardPassword
+	BoardPassword,
+
+	UserPassword,
+	UserTab,
+	UserPasswordShare
 )
 
 # Register your models here.
@@ -145,3 +149,87 @@ class BoardPasswordAdmin(admin.ModelAdmin):
 	)
 
 admin.site.register(BoardPassword, BoardPasswordAdmin)
+
+
+class UserPasswordAdmin(admin.ModelAdmin):
+	list_display = (
+		"password",
+		"updated_at",
+		"updated_by",
+		"created_at",
+		"created_by"
+	)
+
+	search_fields = (
+		"password__code",
+		"password__title",
+		"password__url",
+		"password__username",
+		"password__description",
+	)
+
+	list_display_links = (
+		'password',
+	)
+
+	exclude = (
+		"created_at",
+		"created_by",
+		"updated_at",
+		"updated_by"
+	)
+
+admin.site.register(UserPassword, UserPasswordAdmin)
+
+
+class UserTabAdmin(admin.ModelAdmin):
+	list_display = (
+		"id",
+		"name",
+		"user",
+		"order",
+		"is_default"
+	)
+
+	search_fields = (
+		"name",
+		"user"
+	)
+
+	list_display_links = (
+		"id",
+		"name"
+	)
+
+
+admin.site.register(UserTab, UserTabAdmin)
+
+
+
+class UserPasswordShareAdmin(admin.ModelAdmin):
+	list_display = (
+		"id",
+		"user",
+		"user_password"
+	)
+
+	search_fields = (
+		"user_password__password__code",
+		"user_password__password__title",
+		"user_password__password__url",
+		"user_password__password__username",
+		"user_password__password__description",
+	)
+
+	list_display_links = (
+		'id',
+	)
+
+	exclude = (
+		"created_at",
+		"created_by",
+		"updated_at",
+		"updated_by"
+	)
+
+admin.site.register(UserPasswordShare, UserPasswordShareAdmin)

@@ -1,5 +1,6 @@
 from django.db import models, transaction, IntegrityError
 from django.contrib.auth.models import Permission, User
+from django.db.models.fields import related
 from django.utils.translation import gettext as _
 from django_mysql import models as mysql_models
 from django.core.exceptions import ValidationError
@@ -12,11 +13,88 @@ from .generic_models import GenericPassword
 from .abstract_models import AuditModel
 
 
+class UserTab(models.Model):
+
+	user = models.ForeignKey(User, on_delete=models.CASCADE, null=False, blank=False, verbose_name=_("User_tab"), related_name="user_tabs")
+
+	name = models.CharField(max_length=30, null=False, blank=False, verbose_name=_("Tab_name"))
+	order = models.IntegerField(verbose_name=_("Order_of_the_tab"))
+	is_default = models.BooleanField(null=True, blank=True, default=None,
+		choices=(
+			(None, "False"),
+			(True, "True")
+		)
+	)
+
+	class Meta:
+		unique_together = (
+			("user", "is_default")
+		)
+
+
 class UserPassword(AuditModel):
 
-	id = models.OneToOneField(GenericPassword, on_delete=models.CASCADE, primary_key=True, null=False, blank=False, verbose_name=_("Generic_password_id"), related_name="user_password")
-	user = models.ForeignKey(User, on_delete=models.CASCADE, null=False, blank=False, verbose_name=_("User"))
+	password = models.OneToOneField(GenericPassword, on_delete=models.CASCADE, primary_key=True, null=False, blank=False, verbose_name=_("Generic_password"), related_name="user_password")
+	user = models.ForeignKey(User, on_delete=models.CASCADE, null=False, blank=False, verbose_name=_("User"), related_name="user_passwords")
 
+	user_tab = models.ForeignKey(UserTab, on_delete=models.CASCADE, null=False, blank=False, verbose_name=_("User_tab"), related_name="tab_passwords")
+
+	@staticmethod
+	def create(
+		user_id:int, user_tab_id:int,
+		password:str, title:str,
+		description:str=None, url:str=None,
+		username:str=None,
+		commit:bool=True
+	):
+		target_file = None
+		try:
+			with transaction.atomic():
+				generic_password, target_file = GenericPassword.create(
+					password,
+					title,
+					description=description,
+					url=url,
+					username=username,
+					commit=False
+				)
+
+				user_password = UserPassword(
+					password=generic_password,
+					user_id=user_id,
+					user_tab_id=user_tab_id
+				)
+
+				if commit:
+					generic_password.save()
+					user_password.save()
+
+				return user_password
+
+		except Exception as e:
+			if target_file is not None:
+				os.remove(target_file)
+
+			raise e
+
+	def remove(self):
+		with transaction.atomic():
+			password = self.password
+
+			self.delete()
+			password.remove()
+
+
+class UserPasswordShare(AuditModel):
+
+	user = models.ForeignKey(User, on_delete=models.CASCADE, null=False, blank=False, verbose_name=_("User"), related_name="shared_passwords")
+
+	user_password = models.ForeignKey(UserPassword, on_delete=models.CASCADE, null=False, blank=False, verbose_name=_("User_password"), related_name="password_shares")
+
+	class Meta:
+		unique_together = (
+			("user", "user_password")
+		)
 
 
 

@@ -5,12 +5,10 @@ from django.db.models.query_utils import Q
 from django.http.response import Http404
 from main.models import Board
 from rest_framework.generics import GenericAPIView
-from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.request import Request
-from rest_framework import serializers, status, generics
+from rest_framework import status
 from main.commons import serialization_errors_to_response
-from django.db.models import CharField, Value as V, Count
+from django.db.models import Value as V
 from django.db.models.functions import Concat
 from django.core.paginator import Paginator
 from django.core.exceptions import ValidationError as CoreValidationError
