@@ -834,7 +834,7 @@ class BoardTabsAPI(GenericAPIView):
                             "string": "Tab ID not found",
                             "code": "tab_not_found"
                         }
-                    })
+                    }, status=status.HTTP_400_BAD_REQUEST)
             else:
                 builder.prepend_tab(data["name"])
             builder.save()
@@ -843,7 +843,8 @@ class BoardTabsAPI(GenericAPIView):
                 Prefetch(
                     "tab_passwords",
                     queryset=BoardPassword.objects.order_by("password__title")
-                )
+                ),
+                "tab_passwords__password"
             ).order_by("board_order")
 
             response = BoardTabsAPIGetResponseSerializer(instance = objects, many=True)
@@ -896,7 +897,8 @@ class BoardTabAPI(GenericAPIView):
                 Prefetch(
                     "tab_passwords",
                     queryset=BoardPassword.objects.order_by("password__title")
-                )
+                ),
+                "tab_passwords__password"
             )
         except BoardTab.DoesNotExist:
             raise Http404()

@@ -84,6 +84,33 @@ class UserPassword(AuditModel):
 			self.delete()
 			password.remove()
 
+	def duplicate(self, owner_id:int=None, tab_id:int=None, commit=True):
+		if owner_id is None:
+			owner_id = self.user_id
+		if tab_id is None:
+			tab_id = self.tab_id
+
+		with transaction.atomic():
+			generic_password, target_file = super().duplicate(commit=False)
+
+			try:
+				user_password = UserPassword(
+					password = generic_password,
+					user_id = owner_id,
+					user_tab_id = tab_id
+				)
+
+				generic_password.save()
+				user_password.save()
+			except Exception as e:
+				if os.path.exists(target_file):
+					os.remove(target_file)
+
+				raise e
+
+		return generic_password, target_file
+
+
 
 class UserPasswordShare(AuditModel):
 
@@ -96,6 +123,18 @@ class UserPasswordShare(AuditModel):
 			("user", "user_password")
 		)
 
+	def clean(self):
+		super().clean()
+
+		if self.user_password.user_id == self.user_id:
+			raise ValidationError({
+				"user": [ "Cannot share password to password owner" ]
+			})
+
+
+	def save(self, *args, **kwargs):
+		self.full_clean()
+		return super().save(*args, **kwargs)
 
 
 #

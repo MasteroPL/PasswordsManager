@@ -162,6 +162,18 @@ class GenericPassword(AuditModel):
 
 			return target_file
 
+	def duplicate(self, commit:bool=True):
+		password = self.read()
+
+		return GenericPassword.create(
+			password,
+			self.title,
+			self.description,
+			self.url,
+			self.username,
+			commit
+		)
+
 	class IntegrityError(Exception):
 		'''
 		Data in the database matched with data stored in files might mismatch
