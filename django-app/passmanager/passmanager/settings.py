@@ -53,7 +53,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'main',
-    'sslserver'
+    'sslserver',
+    'dynamic_raw_id',
 ]
 
 MIDDLEWARE = [

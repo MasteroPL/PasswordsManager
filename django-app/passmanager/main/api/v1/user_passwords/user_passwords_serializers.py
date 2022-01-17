@@ -82,7 +82,7 @@ class UserPasswordsAPIPostRequestSerializer(serializers.Serializer):
 
     
     password = serializers.CharField(max_length=128, required=True)
-    user_tab_id = serializers.IntegerField(required=True)
+    user_tab_id = serializers.IntegerField(required=False, allow_null=True, default=None)
     title = serializers.CharField(max_length=50, required=True)
     description = serializers.CharField(max_length=1000, required=False, allow_null=True, default=None)
     url = serializers.CharField(max_length=100, required=False, allow_null=True, default=None)
@@ -91,18 +91,25 @@ class UserPasswordsAPIPostRequestSerializer(serializers.Serializer):
     def validate(self, data):
         data = super().validate(data)
 
-        try:
+        if data["user_tab_id"] is not None:
+            try:
+                user_tab = UserTab.objects.get(
+                    user_id=self.user_id,
+                    id=data["user_tab_id"]
+                )
+            except UserTab.DoesNotExist:
+                raise serializers.ValidationError({
+                    "user_tab_id": ErrorDetail(
+                        "User tab was not found",
+                        code="not_found"
+                    )
+                })
+        else:
             user_tab = UserTab.objects.get(
                 user_id=self.user_id,
-                id=data["user_tab_id"]
+                is_default=True
             )
-        except UserTab.DoesNotExist:
-            raise serializers.ValidationError({
-                "user_tab_id": ErrorDetail(
-                    "User tab was not found",
-                    code="not_found"
-                )
-            })
+            data["user_tab_id"] = user_tab.id
 
         data["user_tab"] = user_tab
 

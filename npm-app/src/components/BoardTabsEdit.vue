@@ -17,7 +17,7 @@
 					color="primary"
 					@click="onTabAddClick()"
 				>
-					Add group
+					Add tab
 					<v-icon
 						right
 					>mdi-plus</v-icon>

@@ -1,0 +1,95 @@
+version: '3'
+
+services:
+  passmanager_db:
+    build: ./mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8 --collation-server=$MYSQL_COLLATION_SERVER
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: 1
+      MYSQL_ROOT_HOST: 127.0.0.1
+      INIT_DATABASE_NAME: $MYSQL_DATABASE_NAME
+      INIT_APPLICATION_USER_USERNAME: $MYSQL_DEFAULT_APPLICATION_USER_USERNAME
+      INIT_APPLICATION_USER_PASSWORD: $MYSQL_DEFAULT_APPLICATION_USER_PASSWORD
+      INIT_ADMIN_USER_USERNAME: $MYSQL_DEFAULT_ADMIN_USER_USERNAME
+      INIT_ADMIN_USER_PASSWORD: $MYSQL_DEFAULT_ADMIN_USER_PASSWORD
+      INIT_ADMINER_IPV4: $ADMINER_IPV4
+      INIT_DJANGO_IPV4: $DJANGO_IPV4
+    expose:
+      - '3306'
+    volumes:
+      - ./mysql/init.d/:/docker-entrypoint-initdb.d
+      - ./mysql/persistent_storage/:/var/lib/mysql
+    networks:
+      passmanager_network:
+        ipv4_address: $MYSQL_IPV4
+
+  passmanager_django:
+    build: ./django
+    command: sh -c "pip install -r requirements.txt &&
+      pip install -r requirements.prod.txt &&
+      python manage.py migrate &&
+      gunicorn passmanager.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - static_volume:/home/app/web/public/static
+      - media_volume:/home/app/web/public/media
+      - ./django/protected:/home/app/web/protected
+    depends_on:
+      - "passmanager_db"
+    restart: "on-failure"
+    environment:
+      - DEBUG=$DJANGO_DEBUG
+      - SECRET_KEY=$DJANGO_SECRET_KEY
+      - ALLOWED_HOSTS=$DJANGO_ALLOWED_HOSTS
+      - CORS_ORIGIN_WHITELIST=$DJANGO_CORS_ORIGIN_WHITELIST
+      - DB_HOST=$MYSQL_IPV4
+      - DB_NAME=$MYSQL_DATABASE_NAME
+      - DB_USER=$MYSQL_DEFAULT_APPLICATION_USER_USERNAME
+      - DB_PASSWORD=$MYSQL_DEFAULT_APPLICATION_USER_PASSWORD
+    expose:
+      - "8000"
+    working_dir: /home/app/web
+    networks:
+      passmanager_network:
+        ipv4_address: $DJANGO_IPV4
+
+  passmanager_node:
+    build: 
+      context: ./node
+      args:
+        - VUE_APP_API_URL=${NODE_API_URL}
+    expose:
+      - "80"
+    networks:
+      passmanager_network:
+        ipv4_address: $NODE_IPV4
+
+  nginx:
+    build: ./nginx
+    ports: 
+      - $DJANGO_PORT:443
+      - $NODE_PORT:444
+    volumes:
+      - static_volume:/home/app/web/static
+      - media_volume:/home/app/web/media
+    networks:
+      passmanager_network:
+        ipv4_address: $NGINX_IPV4
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 127.0.0.1:8081:8080
+    networks:
+      passmanager_network:
+        ipv4_address: $ADMINER_IPV4
+
+networks:
+  passmanager_network:
+    ipam:
+      config:
+        - subnet: $SUBNET
+
+volumes:
+    static_volume:
+    media_volume:

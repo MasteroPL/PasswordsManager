@@ -11,6 +11,18 @@ from main.models import (
 	UserTab,
 	UserPasswordShare
 )
+from dynamic_raw_id.admin import DynamicRawIDMixin
+from dynamic_raw_id.filters import DynamicRawIDFilter
+
+class BoardUserAssignmentInline(admin.TabularInline):
+	model = BoardUserAssignment
+	autocomplete_fields = ('user',)
+	exclude = (
+		"created_at",
+		"created_by",
+		"updated_at",
+		"updated_by"
+	)
 
 # Register your models here.
 class PasswordAdmin(admin.ModelAdmin):
@@ -46,6 +58,10 @@ class BoardAdmin(admin.ModelAdmin):
 		"name"
 	)
 
+	inlines = (
+		BoardUserAssignmentInline,
+	)
+
 	exclude = (
 		"created_at",
 		"created_by",
@@ -56,7 +72,7 @@ class BoardAdmin(admin.ModelAdmin):
 admin.site.register(Board, BoardAdmin)
 
 
-class BoardUserAssignmentAdmin(admin.ModelAdmin):
+class BoardUserAssignmentAdmin(DynamicRawIDMixin, admin.ModelAdmin):
 	list_display = (
 		"id",
 		"board",
@@ -70,6 +86,27 @@ class BoardUserAssignmentAdmin(admin.ModelAdmin):
 		"updated_by",
 		"created_at",
 		"created_by"
+	)
+
+	fieldsets = (
+		(None, {
+			"fields": (
+				"board",
+				"user"
+			),
+		}),
+		("Advanced options", {
+			'classes': ('collapse',),
+			'fields': ('perm_admin', 'perm_create', 'perm_read', 'perm_update', 'perm_delete')
+		})
+	)
+
+	raw_id_fields = ('board',)
+	autocomplete_fields = ('user',)
+	
+	list_filter = ( 
+		('user', DynamicRawIDFilter),
+		('board', DynamicRawIDFilter),
 	)
 
 	search_fields = (

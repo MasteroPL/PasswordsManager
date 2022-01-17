@@ -7,3 +7,4 @@ django-mysql==3.11.1
 djangorestframework-simplejwt==4.6.0
 django-cors-headers==3.7.0
 django-crequest==2018.5.11
+django-dynamic-raw-id==2.8

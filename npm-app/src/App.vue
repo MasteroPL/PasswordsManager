@@ -92,7 +92,7 @@
           <!-- Passwords list -->
           <v-list-item
             link
-            @click="navigateTo('/passwords/')"
+            @click="navigateTo('/user-passwords/')"
           >
             <v-list-item-icon>
               <v-icon>mdi-lock</v-icon>

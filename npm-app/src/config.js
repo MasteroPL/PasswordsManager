@@ -1,5 +1,5 @@
 
-module.exports = {
+export default {
   appVer: "0.1 Alpha",
-  apiUrl: "https://localhost:8000/"
+  apiUrl: (process.env.API_URL) ? process.env.API_URL : "https://localhost:8000/"
 };

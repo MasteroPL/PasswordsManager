@@ -1,9 +1,10 @@
-import Vue from 'vue'
-import Vuex from 'vuex'
+import Vue from 'vue';
+import Vuex from 'vuex';
 import BoardsModule from './modules/boardsList';
 import BoardModule from './modules/board';
-import appConfig from '@/config.js'
-import ERRORS from '@/consts/standardErrors'
+import UserPasswordsModule from './modules/userPasswords';
+import appConfig from '@/config.js';
+import ERRORS from '@/consts/standardErrors';
 
 Vue.use(Vuex);
 
@@ -74,7 +75,8 @@ export const encodeEntities = (value) => {
 const store = new Vuex.Store({
     modules: {
         boardsList: BoardsModule,
-        board: BoardModule
+        board: BoardModule,
+        userPasswords: UserPasswordsModule
     },
 
     state: {

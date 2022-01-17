@@ -78,7 +78,7 @@ class UserPasswordsAPI(GenericAPIView):
         )
 
         shared_passwords = UserPassword.objects.filter(
-            pasword_shares__user_id=request.user.id
+            password_shares__user_id=request.user.id
         ).distinct().prefetch_related(
             "password",
             "user"
@@ -320,7 +320,7 @@ class UserPasswordShareAPI(GenericAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class UserPasswordsMySharesAPI(GenericAPIView):
+class UserPasswordMySharesAPI(GenericAPIView):
 
     def get(self, request, format=None):
         qs = UserPassword.objects.filter(
