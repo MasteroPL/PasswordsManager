@@ -216,6 +216,7 @@ export default {
 		unlockIcon: 'mdi-lock',
 		unlockPasswordDialog: false,
 
+		initialTab: null,
 		selectedTab: null,
 		selectedTabErrors: [],
 		tabs: []
@@ -261,6 +262,7 @@ export default {
 				this.url = password.url;
 				this.notes = password.description;
 				this.selectedTab = password.tabId;
+				this.initialTab = password.tabId;
 				this.passwordUnlocked = false;
 				this.password = '********';
 				this.passwordShow = false;
@@ -278,6 +280,7 @@ export default {
 				this.url = null;
 				this.notes = null;
 				this.selectedTab = null;
+				this.initialTab = null;
 				this.passwordUnlocked = true;
 				this.password = null;
 				this.passwordShow = false;
@@ -351,7 +354,7 @@ export default {
 				await this.$store.dispatch("userPasswords/updatePassword", {
 					passwordCode: this.$route.params.password_id,
 					tabId: this.selectedTab,
-					_tabId: this.selectedTab,
+					_tabId: this.initialTab,
 					password: (this.passwordUnlocked && this.password != null && this.password != '') ? this.password : undefined,
 					title: this.title,
 					description: this.notes,

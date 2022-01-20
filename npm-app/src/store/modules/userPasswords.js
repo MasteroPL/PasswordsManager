@@ -8,12 +8,8 @@ const API_USER_PASSWORD_COPY = 'api/v1/user-password/%%PASSWORD_CODE%%/copy/';
 const API_USER_PASSWORD_SHARE_SEARCH_USER = 'api/v1/user-password/%%PASSWORD_CODE%%/share/search-user/';
 const API_USER_PASSWORD_SHARES = 'api/v1/user-password/%%PASSWORD_CODE%%/shares/';
 const API_USER_PASSWORD_SHARE = 'api/v1/user-password/%%PASSWORD_CODE%%/share/%%SHARE_ID%%';
-// const API_USER_PASSWORD = 'api/v1/user-password/%%PASSWORD_CODE%%';
-// const API_USER_PASSWORD_COPY = 'api/v1/user-password/%%PASSWORD_CODE%%/copy/';
-// const API_USER_PASSWORD_SHARES = 'api/v1/user-password/%%PASSWORD_CODE%%/shares/';
-// const API_USER_PASSWORD_SHARE = 'api/v1/user-password/%%PASSWORD_CODE%%/share/%%SHARE_ID%%';
-// const API_USER_PASSWORDS_SHARED_TO_ME = 'api/v1/user-passwords/shared-to-me/';
-// const API_USER_PASSWORD_DUPLICATE = 'api/v1/user-password/%%PASSWORD_CODE%%/duplicate/';
+const API_USER_PASSWORDS_TABS = 'api/v1/user-passwords/tabs/';
+const API_USER_PASSWORDS_TAB = 'api/v1/user-passwords/tab/%%TAB_ID%%';
 
 
 //
@@ -253,11 +249,16 @@ export default {
                 for(let i = 0; i < state.passwords.tabs.length; i++){
                     tabs.push({
                         id: state.passwords.tabs[i].id,
-                        name: state.passwords.tabs[i].name
+                        name: state.passwords.tabs[i].name,
+                        passwordsCount: state.passwords.tabs[i].passwords.length,
+                        default: state.passwords.tabs[i].isDefault
                     });
                 }
+                return tabs;
             }
-            return tabs;
+            else{
+                return null;
+            }
         },
 
         /**
@@ -285,6 +286,11 @@ export default {
 
         newCache(state, payload) {
             state.passwords = payload.passwords;
+        },
+        newTabsCache(state, payload) {
+            if(state.passwords != null){
+                state.passwords.tabs = payload.tabs;
+            }
         },
         deletePassword(state, payload){
             if(state.passwords != null){
@@ -627,9 +633,20 @@ export default {
                 };
             }
             
-            let updatedPassword = adaptPasswordData(response.data, payload._tabId);
-
-            commit("updatePassword", updatedPassword);
+            let updatedPassword = adaptPasswordData(response.data, response.data.user_tab_id);
+            
+            if(response.data.user_tab_id != payload._tabId){
+                commit("deletePassword", {
+                    passwordCode: payload.passwordCode
+                });
+                commit("addPasswordToTab", {
+                    tabId: response.data.user_tab_id,
+                    password: updatedPassword
+                });
+            }
+            else{
+                commit("updatePassword", updatedPassword);
+            }
 
             return updatedPassword;
         },
@@ -901,6 +918,188 @@ export default {
                 code: payload.passwordCode,
                 shareId: payload.shareId
             });
+        },
+        async addTab({commit, rootState, rootGetters}, payload){
+            let requiredFields = [
+                "tabName"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let addAfter = null;
+            if(typeof(payload.addAfter) !== 'undefined'){
+                addAfter = payload.addAfter;
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            let response = null;
+            try {
+                response = await axios({
+                    method: "POST",
+                    url: rootState.apiUrl + API_USER_PASSWORDS_TABS,
+                    headers: headers,
+                    data: {
+                        name: payload.tabName,
+                        add_after: addAfter
+                    }
+                });
+            } catch(error) {
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            let newCache = adaptTabsData(response.data);
+
+            commit("newTabsCache", {
+                tabs: newCache
+            });
+
+            return newCache;
+        },
+        async editTab({commit, rootState, rootGetters}, payload){
+            let requiredFields = [
+                "tabId", "tabName"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let putAfter = null;
+            if(typeof(payload.putAfter) !== 'undefined'){
+                putAfter = payload.putAfter;
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            let response = null;
+            try {
+                response = await axios({
+                    method: "PATCH",
+                    url: rootState.apiUrl + API_USER_PASSWORDS_TAB.replace("%%TAB_ID%%", payload.tabId),
+                    headers: headers,
+                    data: {
+                        name: payload.tabName,
+                        put_after: putAfter
+                    }
+                });
+            } catch(error) {
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+
+            let newCache = adaptTabsData(response.data);
+
+            commit("newTabsCache", {
+                tabs: newCache
+            });
+
+            return newCache;
+        },
+        async removeTab({commit, rootState, rootGetters}, payload){
+            let requiredFields = [
+                "tabId", "removePasswords"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }
+
+            let movePasswordsTo = null;
+            if(!payload.removePasswords && typeof(payload.movePasswordsTo) == 'undefined'){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: {
+                        "movePasswordsTo": {
+                            string: "This field is required if removePasswords is set to true",
+                            errors: "conditionally_required"
+                        }
+                    }
+                };
+            }
+            else if(!payload.removePasswords){
+                movePasswordsTo = payload.movePasswordsTo;
+            }
+
+            let headers = rootGetters.standardRequestHeaders;
+            let response = null;
+            try {
+                response = await axios({
+                    method: "DELETE",
+                    url: rootState.apiUrl + API_USER_PASSWORDS_TAB.replace("%%TAB_ID%%", payload.tabId),
+                    headers: headers,
+                    data: {
+                        remove_passwords: payload.removePasswords,
+                        move_passwords_to_tab_id: movePasswordsTo
+                    }
+                });
+            } catch(error) {
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
+            
+            let newCache = adaptTabsData(response.data);
+
+            commit("newTabsCache", {
+                tabs: newCache
+            });
+
+            return newCache;
         }
     }
 }

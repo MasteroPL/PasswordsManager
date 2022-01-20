@@ -80,6 +80,11 @@ export default {
 		definedTabs: {
 			type: Array,
 			required: true
+		},
+		boardMode: {
+			type: Boolean,
+			required: false,
+			default: true
 		}
 	},
 	data: () => ({
@@ -141,11 +146,19 @@ export default {
 
 			// ADD NEW
 			if(this.tabId == null){
-				await this.$store.dispatch("board/addTab", {
-					boardId: this.$route.params.board_id,
-					tabName: this.tabName,
-					addAfter: this.tabPosition
-				});
+				if(this.boardMode){
+					await this.$store.dispatch("board/addTab", {
+						boardId: this.$route.params.board_id,
+						tabName: this.tabName,
+						addAfter: this.tabPosition
+					});
+				}
+				else{
+					await this.$store.dispatch("userPasswords/addTab", {
+						tabName: this.tabName,
+						addAfter: this.tabPosition
+					});
+				}
 
 				this.$emit("added");
 				this.close();
@@ -153,12 +166,21 @@ export default {
 
 			// EDIT EXISTING
 			else {
-				await this.$store.dispatch("board/editTab", {
-					boardId: this.$route.params.board_id,
-					tabId: this.tabId,
-					tabName: this.tabName,
-					putAfter: this.tabPosition
-				});
+				if(this.boardMode){
+					await this.$store.dispatch("board/editTab", {
+						boardId: this.$route.params.board_id,
+						tabId: this.tabId,
+						tabName: this.tabName,
+						putAfter: this.tabPosition
+					});
+				}
+				else{
+					await this.$store.dispatch("userPasswords/editTab", {
+						tabId: this.tabId,
+						tabName: this.tabName,
+						putAfter: this.tabPosition
+					});
+				}
 
 				this.$emit("edited");
 				this.close();

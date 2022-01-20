@@ -157,6 +157,7 @@
           :userData="userData"
           @set-tabs="handleSetTabs"
           @reload-data="reloadData"
+          @logout="logout"
         ></router-view>
       </v-main>
     </v-container>

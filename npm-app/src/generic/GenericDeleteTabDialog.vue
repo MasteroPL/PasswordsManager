@@ -121,6 +121,11 @@ export default {
 			type: Array,
 			required: false,
 			default: null
+		},
+		boardMode: {
+			type: Boolean,
+			required: false,
+			default: true
 		}
 	},
 	data: () => ({
@@ -159,12 +164,21 @@ export default {
 		},
 
 		async onSubmit(){
-			await this.$store.dispatch("board/removeTab", {
-				boardId: this.$route.params.board_id,
-				tabId: this.tabId,
-				removePasswords: this.deletePasswords,
-				movePasswordsTo: this.tabSelectModel
-			});
+			if(this.boardMode){
+				await this.$store.dispatch("board/removeTab", {
+					boardId: this.$route.params.board_id,
+					tabId: this.tabId,
+					removePasswords: this.deletePasswords,
+					movePasswordsTo: this.tabSelectModel
+				});
+			}
+			else{
+				await this.$store.dispatch("userPasswords/removeTab", {
+					tabId: this.tabId,
+					removePasswords: this.deletePasswords,
+					movePasswordsTo: this.tabSelectModel
+				});
+			}
 
 			this.$emit("deleted");
 			this.close();

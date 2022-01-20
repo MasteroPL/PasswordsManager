@@ -107,7 +107,12 @@ class UserPasswordAPI(GenericAPIView):
             user_password__password__code=password_code
         ).exists()
 
-        obj = UserPassword.objects.select_related("password").get(
+        obj = UserPassword.objects.select_related("password").prefetch_related(
+            Prefetch(
+                "password_shares",
+                queryset=UserPasswordShare.objects.prefetch_related("user").order_by("user__username")
+            )
+        ).get(
             password__code=password_code
         )
 
@@ -399,10 +404,9 @@ class UserTabsAPI(GenericAPIView):
 
             objects = UserTab.objects.filter(user_id=request.user.id).prefetch_related(
                 Prefetch(
-                    "tab_passwords",
-                    queryset=UserPassword.objects.order_by("password__title")
+                    "tab_passwords", to_attr="passwords",
+                    queryset=UserPassword.objects.select_related("password").order_by("password__title")
                 ),
-                "tab_passwords__password"
             ).order_by("order")
 
             response = UserTabsAPIGetResponseSerializer(instance = objects, many=True)
@@ -416,10 +420,9 @@ class UserTabsAPI(GenericAPIView):
     def get(self, request, format=None):
         objects = UserTab.objects.filter(user_id=request.user.id).prefetch_related(
             Prefetch(
-                "tab_passwords",
-                queryset=UserPassword.objects.order_by("password__title")
+                "tab_passwords", to_attr="passwords",
+                queryset=UserPassword.objects.select_related("password").order_by("password__title")
             ),
-            "tab_passwords__password"
         ).order_by("order")
 
         response = UserTabsAPIGetResponseSerializer(instance = objects, many=True)
@@ -478,10 +481,9 @@ class UserTabAPI(GenericAPIView):
 
             objects = UserTab.objects.filter(user_id=request.user.id).prefetch_related(
                 Prefetch(
-                    "tab_passwords",
-                    queryset=UserPassword.objects.order_by("password__title")
+                    "tab_passwords", to_attr="passwords",
+                    queryset=UserPassword.objects.select_related("password").order_by("password__title")
                 ),
-                "tab_passwords__password"
             ).order_by("order")
 
             response = UserTabsAPIGetResponseSerializer(instance = objects, many=True)
@@ -520,10 +522,9 @@ class UserTabAPI(GenericAPIView):
 
             objects = UserTab.objects.filter(user_id=request.user.id).prefetch_related(
                 Prefetch(
-                    "tab_passwords",
-                    queryset=UserPassword.objects.order_by("password__title")
+                    "tab_passwords", to_attr="passwords",
+                    queryset=UserPassword.objects.select_related("password").order_by("password__title")
                 ),
-                "tab_passwords__password"
             ).order_by("order")
 
             response = UserTabsAPIGetResponseSerializer(instance = objects, many=True)

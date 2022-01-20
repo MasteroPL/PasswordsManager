@@ -14,6 +14,34 @@ from main.models.generic_models import GenericPassword
 
 
 class UserPasswordResponseSerializer(serializers.ModelSerializer):
+    
+    class _UserPasswordResponseGenericShareSerializer(serializers.ModelSerializer):
+            
+            class _UserPasswordResponseUserSerializer(serializers.ModelSerializer):
+                full_name = serializers.SerializerMethodField()
+                def get_full_name(self, obj):
+                    return str(obj.last_name) + " " + str(obj.first_name)
+                
+                class Meta:
+                    model = User
+                    fields = (
+                        "id",
+                        "username",
+                        "first_name",
+                        "last_name",
+                        "email",
+                        "full_name"
+                    )
+
+            user = _UserPasswordResponseUserSerializer()
+            
+            class Meta:
+                model = UserPasswordShare
+                fields=(
+                    "id",
+                    "user"
+                )
+
     class _UserPasswordResponseGenericPasswordSerializer(serializers.ModelSerializer):
         class Meta:
             model = GenericPassword
@@ -26,6 +54,7 @@ class UserPasswordResponseSerializer(serializers.ModelSerializer):
             )
 
     password = _UserPasswordResponseGenericPasswordSerializer()
+    password_shares = _UserPasswordResponseGenericShareSerializer(many=True)
     user_tab_id = serializers.SerializerMethodField()
     def get_user_tab_id(self, obj):
         return obj.user_tab_id
@@ -34,6 +63,7 @@ class UserPasswordResponseSerializer(serializers.ModelSerializer):
         model = UserPassword
         fields = (
             "password",
+            "password_shares",
             "user_tab_id"
         )
 
@@ -423,14 +453,14 @@ class UserTabsAPIGetResponseSerializer(serializers.ModelSerializer):
             return True
         return False
 
-    tab_passwords = UserPasswordResponseSerializer(many=True)
+    passwords = UserPasswordResponseSerializer(many=True)
     class Meta:
         model=UserTab
         fields=(
             "id",
             "name",
             "is_default",
-            "tab_passwords"
+            "passwords"
         )
 
 class UserTabsAPIPostRequestSerializer(serializers.ModelSerializer):
@@ -484,7 +514,7 @@ class UserTabAPIPatchRequestSerializer(serializers.ModelSerializer):
     def validate(self, data):
         data = super().validate(data)
 
-        if data.__contains__("put_after") and data["put_after"] is not None and not UserTab.objects.filter(board_id=self.user_id, id=data["put_after"]).exists():
+        if data.__contains__("put_after") and data["put_after"] is not None and not UserTab.objects.filter(user_id=self.user_id, id=data["put_after"]).exists():
             raise serializers.ValidationError({
                 "put_after": ErrorDetail(
                     "Requested tab id has not been found",
@@ -502,7 +532,7 @@ class UserTabAPIDeleteRequestSerializer(serializers.Serializer):
         self.user_id = user_id
 
     remove_passwords = serializers.BooleanField(required=False, default=True)
-    move_passwords_to_tab_id = serializers.IntegerField(required=False, default=None)
+    move_passwords_to_tab_id = serializers.IntegerField(required=False, allow_null=True, default=None)
 
     def validate(self, data):
         data = super().validate(data)
