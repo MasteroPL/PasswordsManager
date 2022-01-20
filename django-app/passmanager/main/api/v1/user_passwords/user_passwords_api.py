@@ -35,7 +35,9 @@ from .user_passwords_serializers import (
     UserTabsAPIPostRequestSerializer,
     UserTabsAPIGetResponseSerializer,
     UserTabAPIPatchRequestSerializer,
-    UserTabAPIDeleteRequestSerializer
+    UserTabAPIDeleteRequestSerializer,
+    UserPasswordShareSearchUserRequestSerializer,
+    UserPasswordShareSearchUserResponseSerializer
 )
 
 from main.utils.user_tabs_builder import UserTabsBuilder, UserTabNotFoundError
@@ -72,7 +74,12 @@ class UserPasswordsAPI(GenericAPIView):
         tabs = UserTab.objects.filter(user_id=request.user.id).order_by('order').prefetch_related(
             Prefetch(
                 "tab_passwords", to_attr="passwords",
-                queryset=UserPassword.objects.order_by("password__title")
+                queryset=UserPassword.objects.prefetch_related(
+                    Prefetch(
+                        "password_shares",
+                        queryset=UserPasswordShare.objects.prefetch_related("user").order_by("user__username")
+                    )
+                ).order_by("password__title")
             ),
             "passwords__password"
         )
@@ -525,3 +532,51 @@ class UserTabAPI(GenericAPIView):
         errors = serialization_errors_to_response(serializer.errors)
         return Response(data=errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+class UserPasswordShareSearchUserAPI(GenericAPIView):
+    def get(self, request, password_code:str, format=None):
+        try:
+            obj = UserPassword.objects.get(
+                password__code=password_code,
+                user=request.user
+            )
+        except UserPassword.DoesNotExist:
+            raise Http404()
+
+        serializer = UserPasswordShareSearchUserRequestSerializer(data=request.query_params)
+        if serializer.is_valid():
+            data = serializer.validated_data
+            
+            exclude_ids = UserPasswordShare.objects.filter(
+                user_password=obj
+            ).values_list("user_id", flat=True)
+
+            users_annotate = User.objects.annotate(
+                search_value=Concat(
+                    "username",
+                    V(" ("),
+                    "last_name",
+                    V(" "),
+                    "first_name",
+                    V(")")
+                )
+            )
+
+            if data["search_text"] is None or data["search_text"] == "":
+                users_qs = users_annotate.all(
+                ).exclude(
+                    Q(id__in=exclude_ids)|Q(id=obj.user_id)
+                )[:10]
+            else:
+                users_qs = users_annotate.filter(
+                    search_value__icontains=data["search_text"]
+                ).exclude(
+                    Q(id__in=exclude_ids)|Q(id=obj.user_id)
+                )[:10]
+
+            response = UserPasswordShareSearchUserResponseSerializer(instance=users_qs, many=True)
+
+            return Response(data=response.data, status=status.HTTP_200_OK)
+
+        errors = serialization_errors_to_response(serializer.errors)
+        return Response(data=errors, status=status.HTTP_400_BAD_REQUEST)

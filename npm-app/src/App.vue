@@ -156,6 +156,7 @@
         <router-view
           :userData="userData"
           @set-tabs="handleSetTabs"
+          @reload-data="reloadData"
         ></router-view>
       </v-main>
     </v-container>
@@ -225,18 +226,7 @@ export default {
   },
   mounted() {
     this.loadTheme();
-
-    let userPayload = this.$store.getters["userPayload"];
-
-    let lastNameInitial = (userPayload.lastName != null) ? userPayload.lastName[0] : '';
-    let firstNameInitial = (userPayload.firstName != null) ? userPayload.firstName[0] : '';
-
-    this.userData = {
-      initials: (userPayload.lastName == null && userPayload.firstName == null) ? "##" : firstNameInitial + lastNameInitial,
-      firstName: userPayload.firstName,
-      lastName: userPayload.lastName,
-      id: userPayload.id
-    };
+    this.reloadData();
   },
 
   created() {
@@ -263,6 +253,32 @@ export default {
     }
   },
   methods: {
+    reloadData(){
+      let userPayload = this.$store.getters["userPayload"];
+
+      let lastNameInitial = null;
+      let firstNameInitial = null;
+
+      if (userPayload){
+        lastNameInitial = (userPayload.lastName != null) ? userPayload.lastName[0] : '';
+        firstNameInitial = (userPayload.firstName != null) ? userPayload.firstName[0] : '';
+
+        this.userData = {
+          initials: (userPayload.lastName == null && userPayload.firstName == null) ? "##" : firstNameInitial + lastNameInitial,
+          firstName: userPayload.firstName,
+          lastName: userPayload.lastName,
+          id: userPayload.id
+        };
+      }
+      else{
+        this.userData = {
+          initials: "##",
+          firstName: '',
+          lastName: '',
+          id: -1
+        };
+      }
+    },
     logout(){
       var theme = localStorage.getItem('theme');
       localStorage.clear();
@@ -272,7 +288,7 @@ export default {
       this.userData = null;
       delete axios.defaults.headers.common["Authorization"];
 
-      this.$store.commit("clearCaches");
+      this.$store.dispatch("resetAll");
 
       this.$router.push("/login/");
     },

@@ -9,6 +9,22 @@
 				<v-card-title>Password details</v-card-title>
 
 				<div class="board-details-dialog__actions">
+					<v-tooltip bottom v-if="!boardMode && permissionUpdate">
+						<template v-slot:activator="{ on, attrs }">
+							<v-btn
+								icon
+								color="secondary"
+								v-on="on"
+								v-bind="attrs"
+								@click="onShareClick()"
+							>
+								<v-icon>mdi-share</v-icon>
+							</v-btn>
+						</template>
+
+						<span>Edit password shares</span>
+					</v-tooltip>
+
 					<v-tooltip bottom v-if="permissionUpdate">
 						<template v-slot:activator="{ on, attrs }">
 							<v-btn
@@ -148,6 +164,7 @@
 		<GenericDeletePasswordDialog
 			ref="GenericDeletePasswordDialog"
 			:passwordId="passwordId"
+			:boardMode="boardMode"
 			@deleted="onDeleted()"
 		></GenericDeletePasswordDialog>
 	</div>
@@ -168,6 +185,12 @@ export default {
 	},
 	
 	props: {
+		boardMode: {
+			type: Boolean,
+			required: false,
+			default: true
+		},
+
 		passwordId: {
 			type: String,
 			required: false,
@@ -304,10 +327,18 @@ export default {
 			this.passwordCopyLoader = true;
 			var that = this;
 
-			let passwordValue = await this.$store.dispatch("board/getPasswordValue", {
-				boardId: this.$route.params.board_id,
-				passwordCode: this.passwordId
-			});
+			let passwordValue;
+			if(this.boardMode){
+				passwordValue = await this.$store.dispatch("board/getPasswordValue", {
+					boardId: this.$route.params.board_id,
+					passwordCode: this.passwordId
+				});
+			}
+			else{
+				passwordValue = await this.$store.dispatch("userPasswords/getPasswordValue", {
+					passwordCode: this.passwordId
+				});
+			}
 
 			if(requestId == this.requestId){
 				if (this.passwordCopyTimeout != null){
@@ -335,7 +366,15 @@ export default {
 		},
 
 		onEditClick(){
-			this.$router.push("/board/" + this.$route.params.board_id + "/password/" + this.passwordId);
+			if(this.boardMode)
+				this.$router.push("/board/" + this.$route.params.board_id + "/password/" + this.passwordId);
+			else
+				this.$router.push("/user-password/" + this.passwordId);
+		},
+		onShareClick(){
+			if(!this.boardMode){
+				this.$router.push("/user-password/" + this.passwordId + "/shares/");
+			}
 		},
 
 		onDeleteClick(){

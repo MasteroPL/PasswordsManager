@@ -140,6 +140,10 @@ export default {
 	},
 
 	mutations: {
+		reset(state){
+			state.cachedAt = null;
+			state.items = null;
+		},
 		/**
 		 * Assigns new list of items to cache
 		 * @param {*} state Provided by Vuex

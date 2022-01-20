@@ -1,16 +1,14 @@
 <template>
 	<v-dialog
 		v-model="model"
-		max-width="300px"
-		persistent
+		max-width="320"
 	>
-		<v-card
-		>
-			<v-card-title>Delete password?</v-card-title>
+		<v-card>
+			<v-card-title>Delete share?</v-card-title>
 			<v-divider></v-divider>
 
 			<v-card-text style="padding-top: 20px">
-				Are you sure you want to delete the password? This action <b><u>cannot be undone</u></b>!
+				Are you sure you want to delete the share for user <b>{{ user }}</b>?
 			</v-card-text>
 
 			<v-divider v-if="!loader"></v-divider>
@@ -42,17 +40,16 @@
 <script>
 
 export default {
-	name: "GenericDeletePasswordDialog",
+	name: "GenericDeleteShareDialog",
+
 	props: {
-		passwordId: {
-			type: String,
-			required: false,
-			default: null
+		shareId: {
+			type: Number,
+			required: true
 		},
-		boardMode: {
-			type: Boolean,
-			required: false,
-			default: true
+		user: {
+			type: String,
+			required: true
 		}
 	},
 
@@ -66,31 +63,21 @@ export default {
 			this.loader = false;
 			this.model = true;
 		},
-		close() {
+
+		close(){
 			this.model = false;
 		},
 
 		async onSubmit(){
-			if(this.boardMode){
-				await this.$store.dispatch("board/deletePassword", {
-					boardId: this.$route.params.board_id,
-					passwordCode: this.passwordId
-				});
-			}
-			else{
-				await this.$store.dispatch("userPasswords/deletePassword", {
-					passwordCode: this.passwordId
-				});
-			}
+			await this.$store.dispatch("userPasswords/deleteShare", {
+				passwordCode: this.$route.params.password_id,
+				shareId: this.shareId
+			});
 
 			this.$emit("deleted");
-
 			this.close();
-		}
+		}	
 	}
 }
+
 </script>
-
-<style scoped>
-
-</style>

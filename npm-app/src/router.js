@@ -9,6 +9,8 @@ import BoardTabsEdit from './components/BoardTabsEdit.vue'
 import BoardPasswordEdit from './components/BoardPasswordEdit.vue'
 
 import UserPasswords from './components/UserPasswords.vue'
+import UserPasswordEdit from './components/UserPasswordEdit.vue'
+import UserPasswordShares from './components/UserPasswordShares.vue'
 
 const router = new VueRouter({
     routes: [
@@ -23,7 +25,8 @@ const router = new VueRouter({
         {path: '/board/:board_id/password/:password_id?', component: BoardPasswordEdit, name:"board_password_edit"},
 
         {path: '/user-passwords/', component: UserPasswords, name:"user_passwords"},
-        //{path: '/user-password/:password_id?', component: UserPasswordEdit, name:"user_password_edit"}
+        {path: '/user-password/:password_id?', component: UserPasswordEdit, name:"user_password_edit"},
+        {path: '/user-password/:password_id/shares/', component: UserPasswordShares}
     ]
 });
 

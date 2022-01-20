@@ -34,7 +34,7 @@ class BoardsAPIGetRequestSerializer(serializers.Serializer):
     
     per_page = serializers.IntegerField(default=-1, label="Items per page", help_text="Defines number of items returned per page. -1 means all items will be returned")
     page = serializers.IntegerField(default=1, label="Page to return", help_text="Defines page to return")
-    search_text = serializers.CharField(default=None, allow_null=True, allow_blank=True, label="Standard search filter", help_text="Searches by board title and description")
+    search_text = serializers.CharField(default=None, allow_null=True, allow_blank=True, label="Standard search filter", help_text="Searches by board title and description", max_length=256)
 
     # Filters might be added here later
 
@@ -303,7 +303,7 @@ class BoardAPIPatchResponseSerializer(serializers.ModelSerializer):
 class BoardAssignmentsAPIGetRequestSerializer(serializers.Serializer):
     per_page = serializers.IntegerField(default=-1, label="Items per page", help_text="Defines number of items returned per page. -1 means all items will be returned")
     page = serializers.IntegerField(default=1, label="Page to return", help_text="Defines page to return")
-    search_text = serializers.CharField(default=None, allow_null=True, allow_blank=True, label="Standard search filter", help_text="Searches by username")
+    search_text = serializers.CharField(default=None, allow_null=True, allow_blank=True, label="Standard search filter", help_text="Searches by username", max_length=256)
 
     # Filters might be added here later
 

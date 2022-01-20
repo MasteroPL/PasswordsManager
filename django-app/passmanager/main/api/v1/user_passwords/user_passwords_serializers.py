@@ -131,12 +131,41 @@ class UserPasswordsTabsResponseSerializer(serializers.ModelSerializer):
                     "code"
                 )
 
+        class _UserPasswordsAPIGetResponseGenericShareSerializer(serializers.ModelSerializer):
+            
+            class _UserPasswordsAPIGetResponseUserSerializer(serializers.ModelSerializer):
+                full_name = serializers.SerializerMethodField()
+                def get_full_name(self, obj):
+                    return str(obj.last_name) + " " + str(obj.first_name)
+                
+                class Meta:
+                    model = User
+                    fields = (
+                        "id",
+                        "username",
+                        "first_name",
+                        "last_name",
+                        "email",
+                        "full_name"
+                    )
+
+            user = _UserPasswordsAPIGetResponseUserSerializer()
+            
+            class Meta:
+                model = UserPasswordShare
+                fields=(
+                    "id",
+                    "user"
+                )
+
         password = _UserPasswordsAPIGetResponseGenericPasswordSerializer()
+        password_shares = _UserPasswordsAPIGetResponseGenericShareSerializer(many=True)
 
         class Meta:
             model = UserPassword
             fields = (
                 "password",
+                "password_shares"
             )
 
     is_default = serializers.SerializerMethodField()
@@ -200,6 +229,10 @@ class UserPasswordAPIPatchRequestSerializer(serializers.Serializer):
 class UserPasswordShareResponseSerializer(serializers.ModelSerializer):
 
     class _UserPasswordShareResponseUserSerializer(serializers.ModelSerializer):
+        full_name = serializers.SerializerMethodField()
+
+        def get_full_name(self, obj):
+            return str(obj.last_name) + " " + str(obj.first_name)        
         class Meta:
             model = User
             fields = (
@@ -207,7 +240,8 @@ class UserPasswordShareResponseSerializer(serializers.ModelSerializer):
                 "username",
                 "first_name",
                 "last_name",
-                "email"
+                "email",
+                "full_name"
             )
 
     class _UserPasswordShareResponseUserPasswordSerializer(serializers.ModelSerializer):
@@ -324,7 +358,7 @@ class UserPasswordSharesPostRequestSerializer(serializers.Serializer):
             ).exists()
 
             try:
-                data["user"] = User.objects.get(id=data["ser_id"])
+                data["user"] = User.objects.get(id=data["user_id"])
             except User.DoesNotExist:
                 raise serializers.ValidationError({
                     "user_id": ErrorDetail(
@@ -496,3 +530,21 @@ class UserTabAPIDeleteRequestSerializer(serializers.Serializer):
                 })
 
         return data
+
+
+class UserPasswordShareSearchUserRequestSerializer(serializers.Serializer):
+    search_text = serializers.CharField(max_length=256, allow_blank=True)
+
+class UserPasswordShareSearchUserResponseSerializer(serializers.ModelSerializer):
+    search_value = serializers.CharField()
+
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "search_value"
+        )
+

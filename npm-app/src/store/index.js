@@ -129,7 +129,7 @@ const store = new Vuex.Store({
             state.accessToken = null;
             state.refreshToken = null;
             state.userPayload = null;
-        }
+        },
     },
 
     getters: {
@@ -154,6 +154,16 @@ const store = new Vuex.Store({
 			}
 
             return headers;
+        }
+    },
+
+    actions: {
+        resetAll({commit}){
+            commit("clearCaches");
+
+            commit("boardsList/reset");
+            commit("board/reset");
+            commit("userPasswords/reset");
         }
     }
 });

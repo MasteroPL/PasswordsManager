@@ -3,11 +3,11 @@
     <v-row align="center" justify="center">
       <div style="text-align:center; max-width:210px;">
         <h1 class="app-title">PassManager</h1>
-        <h3 style="margin-bottom: 20px;">Logowanie</h3>
+        <h3 style="margin-bottom: 20px;">Authorization</h3>
 
         <v-text-field
           v-model="login"
-          label="Nazwa użytkownika"
+          label="Username"
           required
           :error-messages="loginErrors"
           maxlength=50
@@ -15,7 +15,7 @@
         ></v-text-field>
         <v-text-field
           v-model="password"
-          label="Hasło"
+          label="Password"
           :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
           required
           :type="showPassword ? 'text' : 'password'"
@@ -35,7 +35,7 @@
           @click="handleSubmit()"
 
           v-if="mode == 'DEFAULT'"
-        >Zaloguj</v-btn>
+        >Log in</v-btn>
 
         <v-progress-circular
           style="margin-top: 24px;"
@@ -80,11 +80,11 @@
         this.passwordErrors = [];
         this.globalError = null;
         if(this.login == "" || this.login == null){
-          this.loginErrors = [ "To pole jest wymgane" ];
+          this.loginErrors = [ "This field is required" ];
           valid = false;
         }
         if(this.password == "" || this.password == null){
-          this.passwordErrors = [ "To pole jest wymagane" ];
+          this.passwordErrors = [ "This field is required" ];
           valid = false;
         }
 
@@ -120,11 +120,7 @@
             this.$store.commit("setUserPayload",
               userData
             );
-            that.$emit('authorization-data-received', {
-              userData: userData,
-              accessToken: response.access,
-              refreshToken: response.refresh
-            });
+            that.$emit('reload-data');
             that.$router.push("/boards/");
           }).catch((error) => {
             if(error.response){
@@ -134,26 +130,26 @@
                   var err = error.response.data["__global__"][0];
                   switch(err){
                     case "Invalid username or password":
-                      this.globalError = "Nieprawidłowy login lub hasło";
+                      this.globalError = "Invalid username or password";
                       break;
 
                     default:
-                      this.globalError = "Wystąpił nierozpoznany błąd walidacji danych";
+                      this.globalError = "Data validation error occured";
                   }
                 }
               }
               else if(error.response.status == 403 || error.response.status == 401){
-                this.globalError = "Dostęp zabroniony";
+                this.globalError = "Access forbidden";
               }
               else if(error.response.status == 429){
-                this.globalError = "Zapytanie zablokowane. Odczekaj minutę przed następną próbą.";
+                this.globalError = "Request throttled. Wait a minute before attempting again.";
               }
               else {
-                this.globalError = "Wystąpił nierozpoznany błąd";
+                this.globalError = "An unrecognized error has occured";
               }
             }
             else{
-              this.globalError = "Błąd sieci. Spróbuj ponownie później.";
+              this.globalError = "Network error. Please try again later.";
             }
           }).finally(() => {
             that.mode = "DEFAULT";

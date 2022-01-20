@@ -8,7 +8,8 @@ from .user_passwords_api import (
     UserPasswordMySharesAPI,
     UserPasswordDuplicateAPI,
     UserTabsAPI,
-    UserTabAPI
+    UserTabAPI,
+    UserPasswordShareSearchUserAPI
 )
 
 urlpatterns = [
@@ -29,5 +30,5 @@ urlpatterns = [
 
     path("api/v1/user-passwords/tab/<int:tab_id>", UserTabAPI.as_view(), name="api_v1_user_tab"),
 
-    
+    re_path(r"^api/v1/user-password/(?P<password_code>([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12}))/share/search-user/", UserPasswordShareSearchUserAPI.as_view(), name="api_v1_user_password_share_search_user"),    
 ]

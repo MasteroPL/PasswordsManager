@@ -294,6 +294,10 @@ export default {
         }
     },
     mutations: {
+        reset (state) {
+            state.board = null;
+            state.admin = null;
+        },
         /**
          * Assigns new board cache
          * @param {*} state Provided by Vuex
