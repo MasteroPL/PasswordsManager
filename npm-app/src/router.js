@@ -13,6 +13,9 @@ import UserPasswordEdit from './components/UserPasswordEdit.vue'
 import UserPasswordShares from './components/UserPasswordShares.vue'
 import UserPasswordsTabsEdit from './components/UserPasswordsTabsEdit.vue'
 
+import MyProfile from './components/MyProfile.vue'
+import ChangePassword from './components/ChangePassword.vue'
+
 const router = new VueRouter({
     routes: [
         {path: '/dev/', component: Dev},
@@ -28,7 +31,10 @@ const router = new VueRouter({
         {path: '/user-passwords/', component: UserPasswords, name:"user_passwords"},
         {path: '/user-password/:password_id?', component: UserPasswordEdit, name:"user_password_edit"},
         {path: '/user-password/:password_id/shares/', component: UserPasswordShares},
-        {path: '/user-passwords/tabs/', component: UserPasswordsTabsEdit}
+        {path: '/user-passwords/tabs/', component: UserPasswordsTabsEdit},
+
+        {path: '/my-profile/', component: MyProfile},
+        {path: '/change-password/', component: ChangePassword}
     ]
 });
 

@@ -18,12 +18,13 @@ from django.urls import path, re_path, include
 from django.conf.urls import url
 from main.urls import urlpatterns as main_urlpatterns
 from rest_framework_simplejwt import views as jwt_views
-from main.authorization import LoginAPI
+from main.authorization import LoginAPI, ChangePasswordAPI
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/token/', LoginAPI.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', jwt_views.TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/change-password/', ChangePasswordAPI.as_view(), name="api_change_password"),
     *main_urlpatterns,
 
     url(r'^admin/dynamic_raw_id/', include('dynamic_raw_id.urls')),

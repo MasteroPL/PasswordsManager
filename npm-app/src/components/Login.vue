@@ -21,7 +21,7 @@
           :type="showPassword ? 'text' : 'password'"
           @click:append="showPassword = !showPassword"
           :error-messages="passwordErrors"
-          maxlength=50
+          :maxlength="128"
           @keyup.enter.native="handleSubmit"
         ></v-text-field>
 

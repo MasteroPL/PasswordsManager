@@ -7,9 +7,12 @@ from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
+from main.commons import serialization_errors_to_response
 from main.generic_serializers import FullUserSerializer
 from django.core.serializers import serialize
 from rest_framework import permissions as rest_permissions
+from django.contrib.auth.hashers import check_password
+from rest_framework.exceptions import ErrorDetail
 
 def test_user_can_login(user:User):
     if not user.is_active:
@@ -88,6 +91,29 @@ class LoginAPI(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(max_length=128)
+    new_password = serializers.CharField(max_length=128)
+
+class ChangePasswordAPI(APIView):
+
+    def post(self, request, format=None):
+
+        serializer = ChangePasswordSerializer(data=request.data)
+
+        if serializer.is_valid():
+            data = serializer.validated_data
+            if not check_password(data["old_password"], request.user.password):
+                return Response(status=status.HTTP_403_FORBIDDEN)
+
+            request.user.set_password(data["new_password"])
+            request.user.save()
+
+            return Response(status=status.HTTP_200_OK)
+
+        errors = serialization_errors_to_response(serializer.errors)
+        return Response(data=errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 

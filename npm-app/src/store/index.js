@@ -5,8 +5,11 @@ import BoardModule from './modules/board';
 import UserPasswordsModule from './modules/userPasswords';
 import appConfig from '@/config.js';
 import ERRORS from '@/consts/standardErrors';
+import axios from 'axios';
 
 Vue.use(Vuex);
+
+const API_CHANGE_PASSWORD = "api/change-password/";
 
 export const handleStandardRequestResponses = (payload) => {
     let error = payload;
@@ -164,6 +167,51 @@ const store = new Vuex.Store({
             commit("boardsList/reset");
             commit("board/reset");
             commit("userPasswords/reset");
+        },
+
+        async changePassword({state, getters}, payload){
+            let requiredFields = [
+                "oldPassword", "newPassword"
+            ];
+            let errors = {};
+            let valid = true;
+
+            for(let i = 0; i < requiredFields.length; i++){
+                if (typeof(payload[requiredFields[i]]) === 'undefined'){
+                    valid = false;
+                    errors[requiredFields[i]] = {
+                        string: "This field is required",
+                        code: "required"
+                    };
+                }
+            }
+            if(!valid){
+                throw {
+                    type: ERRORS.VALIDATION,
+                    errors: errors
+                };
+            }            
+
+            let headers = getters.standardRequestHeaders;
+
+            try {
+                await axios({
+                    method: "POST",
+                    url: state.apiUrl + API_CHANGE_PASSWORD,
+                    headers: headers,
+                    data: {
+                        old_password: payload.oldPassword,
+                        new_password: payload.newPassword
+                    }
+                });
+            } catch(error) {
+                handleStandardRequestResponses(error);
+
+                throw {
+                    type: ERRORS.UNKNOWN,
+                    errors: []
+                };
+            }
         }
     }
 });

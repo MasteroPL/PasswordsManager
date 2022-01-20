@@ -123,6 +123,7 @@
           <!-- My profile -->
           <v-list-item
             link
+            @click="navigateTo('/my-profile/')"
           >
             <v-list-item-icon>
               <v-icon>mdi-account</v-icon>
@@ -158,6 +159,7 @@
           @set-tabs="handleSetTabs"
           @reload-data="reloadData"
           @logout="logout"
+          @set-dark-mode="setDarkMode"
         ></router-view>
       </v-main>
     </v-container>
@@ -254,6 +256,9 @@ export default {
     }
   },
   methods: {
+    setDarkMode(value){
+      this.darkMode = value;
+    },
     reloadData(){
       let userPayload = this.$store.getters["userPayload"];
 
