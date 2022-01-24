@@ -44,7 +44,7 @@
 					<v-btn
 						text
 						:disabled="state == STATES.SAVING"
-						color="primary"
+						color="secondary"
 						@click="onSubmit()"
 					>Share</v-btn>
 				</v-card-actions>

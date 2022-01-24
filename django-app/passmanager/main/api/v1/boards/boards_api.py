@@ -388,7 +388,14 @@ class BoardAPI(GenericAPIView):
         if obj.owner != request.user:
             return Response(status=status.HTTP_403_FORBIDDEN)
 
-        obj.delete()
+        with transaction.atomic():
+            passwords = BoardPassword.objects.filter(board=obj)
+            for password in passwords:
+                password.remove()
+
+            BoardTab.objects.filter(board=obj).delete()
+
+            obj.delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 

@@ -27,7 +27,7 @@
 					item-text="name"
 					item-value="id"
 					:items="groups"
-					:label="(this.tabId == null) ? 'Add group below' : 'Move group below'"
+					:label="(this.tabId == null) ? 'Add tab below' : 'Move tab below'"
 				></v-select>
 
 			</v-card-text>

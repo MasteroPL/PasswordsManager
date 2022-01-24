@@ -5,19 +5,19 @@
 	>
 		<v-card
 		>
-			<v-card-title>Delete group</v-card-title>
+			<v-card-title>Delete tab</v-card-title>
 			<v-divider></v-divider>
 
 			<v-card-text style="padding-top: 20px;">
 				<p
 					style="font-size: 16px;"
-				>Group chosen for deletion: <br /><b>{{ this.tabName }}</b></p>
+				>Tab chosen for deletion: <br /><b>{{ this.tabName }}</b></p>
 
 				<v-checkbox
 					color="secondary"
 					style='margin-top:0; height: 28px'
 					v-model="deletePasswords"
-					label="Delete group passwords"
+					label="Delete tab passwords"
 				></v-checkbox>
 
 				<div 

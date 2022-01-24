@@ -36,7 +36,7 @@
 						</template>
 
 						<v-list>
-							<v-list-item v-if="false"
+							<!--<v-list-item v-if="false"
 								@click="onUnhideClick(item)"
 							>
 								<v-list-item-title>Unhide board</v-list-item-title>
@@ -51,7 +51,7 @@
 								<v-list-item-icon>
 									<v-icon>mdi-eye-off</v-icon>
 								</v-list-item-icon>
-							</v-list-item>
+							</v-list-item>-->
 							<v-list-item v-if="!item.isOwner"
 								@click="onLeaveClick(item)"
 							>

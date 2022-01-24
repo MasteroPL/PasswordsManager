@@ -178,7 +178,7 @@ export default {
         //                     descriptionHTML: {String},
         //                     username: {String},
         //                     url: {String},
-        //
+        
         //                     shares: [
         //                         {
         //                             shareId: {Number},

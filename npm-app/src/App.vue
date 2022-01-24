@@ -339,13 +339,13 @@ export default {
     markNavigationPage(){
       var path = this.$route.path;
       switch(path){
-        case "/passwords/":
+        case "/user-passwords/":
           this.mainNavigation.selected = 0;
           break;
         case "/boards/":
           this.mainNavigation.selected = 1;
           break;
-        case "/profile/":
+        case "/my-profile/":
           this.mainNavigation.selected = 2;
           break;
         default:
