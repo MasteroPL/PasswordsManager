@@ -3,6 +3,22 @@
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
+import os
+from django.contrib.auth.models import User
+
+
+def create_initial_user(apps, schema_editor):
+    if os.environ.__contains__("INITIAL_USER_USERNAME") and os.environ.__contains__("INITIAL_USER_PASSWORD"):
+        db_alias = schema_editor.connection.alias
+
+        user = User(
+            username=os.environ["INITIAL_USER_USERNAME"],
+            is_active=True,
+            is_superuser=True,
+            is_staff=True
+        )
+        user.set_password(os.environ["INITIAL_USER_PASSWORD"])
+        user.save(using=db_alias)
 
 
 class Migration(migrations.Migration):
@@ -186,4 +202,6 @@ class Migration(migrations.Migration):
             name='board_tab',
             field=models.ForeignKey(on_delete=django.db.models.deletion.RESTRICT, to='main.boardtab', verbose_name='Board_tab'),
         ),
+
+        migrations.RunPython(create_initial_user, reverse_code=migrations.RunPython.noop),
     ]

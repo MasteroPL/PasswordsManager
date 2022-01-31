@@ -218,11 +218,9 @@ export default {
 		await this.getData();
 	},
 	methods: {
-		onHideClick(item){
-			console.log(item);
+		onHideClick(){
 		},
-		onUnhideClick(item){
-			console.log(item);
+		onUnhideClick(){
 		},
 		onLeaveClick(item){
 			this.leaveBoardDialog.boardId = item.id;

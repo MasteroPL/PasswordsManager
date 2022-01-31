@@ -283,10 +283,14 @@
 				class="board-admin__tab-item"
 				style="height:100%"
 			>
-				<div style="max-width: 600px;"
+				<div style="max-width: 600px; text-align: center"
 					v-if="state == STATES.DEFAULT"
 				>
-					Delete board or smth
+					<v-btn
+						color="red"
+						style="margin-top: 32px"
+						@click="onDeleteBoardClick()"
+					>DELETE BOARD</v-btn>	
 				</div>
 
 				<div v-if="state == STATES.LOADING"
@@ -326,12 +330,21 @@
 			@created="loadData(true)"
 			@updated="loadData(true)"
 		></GenericEditBoardUserDialog>
+
+		<GenericDeleteBoardDialog
+			ref="GenericDeleteBoardDialog"
+			:boardId="parseInt($route.params.board_id)"
+			:boardName="details.boardName.initial"
+
+			@deleted="onBoardDeleted()"
+		></GenericDeleteBoardDialog>
 	</div>
 </template>
 
 <script>
 import GenericRemoveBoardUserDialog from "@/generic/GenericRemoveBoardUserDialog.vue"
 import GenericEditBoardUserDialog from "@/generic/GenericEditBoardUserDialog.vue"
+import GenericDeleteBoardDialog from '@/generic/GenericDeleteBoardDialog.vue'
 import ERRORS from "@/consts/standardErrors.js"
 
 const STATES = {
@@ -345,7 +358,8 @@ export default {
 
 	components: {
 		"GenericRemoveBoardUserDialog": GenericRemoveBoardUserDialog,
-		"GenericEditBoardUserDialog": GenericEditBoardUserDialog
+		"GenericEditBoardUserDialog": GenericEditBoardUserDialog,
+		"GenericDeleteBoardDialog": GenericDeleteBoardDialog
 	},
 
 	data: () => ({
@@ -745,6 +759,13 @@ export default {
 
 			this.$refs.GenericEditBoardUserDialog.open();
 		},
+
+		onDeleteBoardClick(){
+			this.$refs.GenericDeleteBoardDialog.open();
+		},
+		onBoardDeleted(){
+			this.$router.push("/boards/");
+		}
 	}
 }
 </script>

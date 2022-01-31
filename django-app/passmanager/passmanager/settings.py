@@ -53,9 +53,10 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'main',
-    'sslserver',
     'dynamic_raw_id',
 ]
+if DEBUG:
+    INSTALLED_APPS.append('sslserver')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

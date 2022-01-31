@@ -8,7 +8,7 @@
 			<div
 				class="user-passwords-header__content"
 			>
-				<h2>My Passwords</h2>				
+				<h2>Passwords list</h2>				
 			</div>
 		</div>
 

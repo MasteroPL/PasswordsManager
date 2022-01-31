@@ -13,27 +13,6 @@ Vue.use(Vuetify);
 Vue.use(VueRouter);
 
 
-//
-// Custom components section
-//
-import ShareDialog from './components/common/dialogs/ShareDialog.vue'
-import NewPasswordDialog from './components/common/dialogs/NewPasswordDialog.vue'
-import EditShareDialog from './components/common/dialogs/EditShareDialog.vue'
-import EditPasswordDialog from './components/common/dialogs/EditPasswordDialog'
-import DeletePasswordDialog from './components/common/dialogs/DeletePasswordDialog.vue'
-import RemoveMyPasswordAssignmentDialog from './components/common/dialogs/RemoveMyPasswordAssignmentDialog.vue'
-import ChangePasswordOwnerDialog from './components/common/dialogs/ChangePasswordOwnerDialog.vue'
-import BoardCard from './components/common/misc/BoardCard.vue'
-
-Vue.component('share-dialog', ShareDialog);
-Vue.component('new-password-dialog', NewPasswordDialog);
-Vue.component('edit-share-dialog', EditShareDialog);
-Vue.component('edit-password-dialog', EditPasswordDialog);
-Vue.component('delete-password-dialog', DeletePasswordDialog);
-Vue.component('remove-my-password-assignment-dialog', RemoveMyPasswordAssignmentDialog);
-Vue.component('change-password-owner-dialog', ChangePasswordOwnerDialog);
-Vue.component('board-card', BoardCard);
-
 // Credits to LinusBorg: https://forum.vuejs.org/t/conditionally-render-parent-element/9324
 Vue.component('with-root', {
   functional: true,

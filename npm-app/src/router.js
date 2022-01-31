@@ -1,5 +1,4 @@
 import VueRouter from 'vue-router'
-import Dev from './components/Dev.vue'
 import BoardsList from './components/BoardsList.vue'
 import BoardAdd from './components/BoardAdd.vue'
 import Login from './components/Login.vue'
@@ -18,7 +17,6 @@ import ChangePassword from './components/ChangePassword.vue'
 
 const router = new VueRouter({
     routes: [
-        {path: '/dev/', component: Dev},
         {path: '/', component: Login, name:"default" },
         {path: '/boards/', component: BoardsList, name:"boards"},
         {path: '/boards/new/', component: BoardAdd, name:"boards_new"},
